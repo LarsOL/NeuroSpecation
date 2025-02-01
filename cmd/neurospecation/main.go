@@ -320,12 +320,23 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
 	}
 
-	// Gather context from ai_knowledge.yaml
-	// Instead of using the passed dir, instead look at the diff and gather all the ai_knowledge.yaml for the changed files (same directory).ai!
-	knowledgePath := filepath.Join(dir, "ai_knowledge.yaml")
-	knowledgeContent, err := os.ReadFile(knowledgePath)
-	if err != nil {
-		return fmt.Errorf("failed to read ai_knowledge.yaml: %w", err)
+	// Gather context from ai_knowledge.yaml for changed files
+	changedFiles := strings.Split(string(diffOutput), "\n")
+	knowledgeContent := ""
+
+	for _, line := range changedFiles {
+		if strings.HasPrefix(line, "diff --git") {
+			parts := strings.Split(line, " ")
+			if len(parts) > 2 {
+				filePath := strings.TrimPrefix(parts[2], "b/")
+				dirPath := filepath.Dir(filePath)
+				knowledgePath := filepath.Join(dirPath, "ai_knowledge.yaml")
+				content, err := os.ReadFile(knowledgePath)
+				if err == nil {
+					knowledgeContent += string(content) + "\n"
+				}
+			}
+		}
 	}
 
 	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n</Repo Context>\n" + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
