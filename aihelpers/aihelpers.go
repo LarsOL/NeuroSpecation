@@ -53,11 +53,11 @@ type PromptRequest struct {
 	Temperature float64
 }
 
-// TODO: Convert to a streaming version to avoid large memory usage on large files
-// Prompt sends a prompt to chat ai and returns the response text.
-// Add ollama integration for local llm. ai!
-
 func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, error) {
+	if client.LocalLLM {
+		return client.promptLocalLLM(req)
+	}
+
 	if client.APIKey == "" {
 		return "", errors.New("API key is not set")
 	}
@@ -66,8 +66,6 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 		return "", errors.New("model is not set")
 	}
 
-	//TODO: Use req to tailor the request
-
 	chatCompletion, err := client.Client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(req.Prompt),
@@ -75,7 +73,6 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 		Model: openai.F(client.Model),
 	})
 	if err != nil {
-		// wrap the error with additional context
 		return "", fmt.Errorf("failed to create chat completion: %w", err)
 	}
 
@@ -84,4 +81,10 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 	}
 
 	return chatCompletion.Choices[0].Message.Content, nil
+}
+
+func (client *AIClient) promptLocalLLM(req PromptRequest) (string, error) {
+	// Placeholder for local LLM integration using Ollama
+	// Implement the logic to interact with the local LLM here
+	return "Local LLM response", nil
 }
