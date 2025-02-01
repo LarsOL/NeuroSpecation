@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"os/exec"
 )
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
@@ -69,6 +70,7 @@ func main() {
 		lvl.Set(slog.LevelDebug)
 		slog.Info("Debug logging enabled")
 	} else {
+		lvl.Set(slog.LevelInfo)
 		slog.Debug("Debug logging disabled")
 	}
 	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -292,11 +294,82 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 }
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	// Implement the logic to compare the diff between the current branch and the default branch
-	// Based on the diff gather the relevant ai_knowledge.yaml to provide context to the ai
-	// Use the ReviewPrompt to prompt the AI.
-	// For now write the output into a AI-Review.md file
-	// Follow the pattern from the other functions, provide a dry-run and debug option. ai!
-	
+	// Get the current branch name
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	currentBranch, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Get the default branch name (usually 'main' or 'master')
+	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
+	defaultBranch, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get default branch: %w", err)
+	}
+	defaultBranchName := strings.TrimSpace(string(defaultBranch))
+	defaultBranchName = strings.TrimPrefix(defaultBranchName, "origin/")
+
+	// Get the diff between the current branch and the default branch
+	cmd = exec.Command("git", "diff", string(currentBranch), defaultBranchName)
+	diffOutput, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get diff: %w", err)
+	}
+
+	// Gather context from ai_knowledge.yaml
+	knowledgePath := filepath.Join(dir, "ai_knowledge.yaml")
+	knowledgeContent, err := os.ReadFile(knowledgePath)
+	if err != nil {
+		return fmt.Errorf("failed to read ai_knowledge.yaml: %w", err)
+	}
+
+	// Prepare the prompt for the AI
+	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
+
+	slog.Debug("Prompting AI for review", "prompt", prompt)
+	var reviewOutput string
+	if !options.dryRun {
+		var err error
+		reviewOutput, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
+			Prompt: prompt,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to prompt AI: %w", err)
+		}
+	}
+
+	if options.logPrompt {
+		fl, err := os.Create(filepath.Join(dir, "ai_review_prompt.txt"))
+		if err != nil {
+			slog.Error("failed to create ai review prompt file", "err", err)
+			return err
+		}
+
+		_, err = fl.WriteString(prompt)
+		if err != nil {
+			slog.Error("failed to write ai review prompt file", "err", err)
+			return err
+		}
+	}
+
+	reviewFilePath := filepath.Join(dir, "AI-Review.md")
+	if options.dryRun {
+		slog.Debug("skipping AI review, would have written file to:", "path", reviewFilePath)
+		return nil
+	}
+
+	f, err := os.Create(reviewFilePath)
+	if err != nil {
+		slog.Error("failed to create review file", "err", err)
+		return err
+	}
+
+	_, err = f.WriteString(reviewOutput)
+	if err != nil {
+		slog.Error("failed to write review file", "err", err)
+		return err
+	}
+
 	return nil
 }
