@@ -18,10 +18,8 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      - windows
-      - darwin
+    goarch:
+      - amd64
 
 archives:
   - format: tar.gz
@@ -36,7 +34,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
 
 changelog:
   sort: asc
