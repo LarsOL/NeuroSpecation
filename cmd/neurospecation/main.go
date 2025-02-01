@@ -298,11 +298,12 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	// Get the current branch name
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	currentBranch, err := cmd.Output()
+	output, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
 
+	currentBranch := strings.TrimSpace(string(output))
 	// Get the default branch name (usually 'main' or 'master')
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
 	defaultBranch, err := cmd.Output()
@@ -313,14 +314,14 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	defaultBranchName = strings.TrimPrefix(defaultBranchName, "origin/")
 
 	// Get the diff between the current branch and the default branch
-	cmd = exec.Command("git", "diff", strings.TrimSpace(string(currentBranch)), defaultBranchName)
+	cmd = exec.Command("git", "diff", string(currentBranch), defaultBranchName)
 	diffOutput, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
 	}
 
 	// Gather context from ai_knowledge.yaml
-	// Instead of using the passed dir, instead look at the diff and gather all the ai_knowledge.yaml for the changed files (same directory).
+	// Instead of using the passed dir, instead look at the diff and gather all the ai_knowledge.yaml for the changed files (same directory).ai!
 	knowledgePath := filepath.Join(dir, "ai_knowledge.yaml")
 	knowledgeContent, err := os.ReadFile(knowledgePath)
 	if err != nil {
