@@ -328,8 +328,10 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		if strings.HasPrefix(line, "diff --git") {
 			parts := strings.Split(line, " ")
 			if len(parts) > 2 {
-				filePath := strings.TrimPrefix(parts[2], "b/")
-				dirPath := filepath.Dir(filePath)
+				filePath := strings.TrimPrefix(parts[2], "a/")
+				// Rather than the passed dir, figure out the git root and use that to calculate the full path. ai!
+				fullPath := filepath.Join(dir, filePath)
+				dirPath := filepath.Dir(fullPath)
 				knowledgePath := filepath.Join(dirPath, "ai_knowledge.yaml")
 				content, err := os.ReadFile(knowledgePath)
 				if err == nil {
