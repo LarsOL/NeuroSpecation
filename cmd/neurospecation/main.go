@@ -212,10 +212,10 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 }
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	updateAIKnowledge := func(d string, files []dirhelper.FileContent, subdirs []string) error {
-		slog.Info("Processing Directory", "Dir", d)
+	updateAIKnowledge := func(dir string, files []dirhelper.FileContent, subdirs []string) error {
+		slog.Info("Processing Directory", "Dir", dir)
 		prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
-		prompt += "Directory: " + d + "\n"
+		prompt += "Directory: " + dir + "\n"
 
 		if len(subdirs) == 0 {
 			prompt += "No subdirectories\n"
@@ -241,7 +241,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		slog.Debug("Prompting AI", "prompt", prompt)
 
 		if options.logPrompt {
-			fl, err := os.Create(filepath.Join(d, "ai_knowledge_prompt.txt"))
+			fl, err := os.Create(filepath.Join(dir, "ai_knowledge_prompt.txt"))
 			if err != nil {
 				slog.Error("failed to create ai prompt file", "err", err)
 				return err
@@ -254,7 +254,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 			}
 		}
 
-		ymlPath := filepath.Join(d, "ai_knowledge.yaml")
+		ymlPath := filepath.Join(dir, "ai_knowledge.yaml")
 		var ans string
 		if !options.dryRun {
 			var err error
@@ -272,7 +272,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		}
 
 		if ans == "no" {
-			slog.Debug("AI did not find the directory useful", "dir", d, "ans", ans)
+			slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
 			return nil
 		}
 		ans = strings.TrimPrefix(ans, "```yaml\n")
