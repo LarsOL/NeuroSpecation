@@ -136,16 +136,16 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 		}
 		return nil
 	}
-	onlyAIKnowledgeFiles := func(nodeName string, fileType fs.FileMode) bool {
-		if fileType.IsDir() {
-			slog.Debug("Allowing sub dir", "dir", nodeName)
+	onlyAIKnowledgeFiles := func(node fs.DirEntry) bool {
+		if node.IsDir() {
+			slog.Debug("Allowing sub dir", "dir", node.Name())
 			return true
 		}
-		if nodeName == "ai_knowledge.yaml" {
-			slog.Debug("Allowing file", "File", nodeName)
+		if node.Name() == "ai_knowledge.yaml" {
+			slog.Debug("Allowing file", "File", node.Name())
 			return true
 		}
-		slog.Debug("Rejecting file", "File", nodeName)
+		slog.Debug("Rejecting file", "File", node.Name())
 		return false
 	}
 
@@ -224,7 +224,8 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		}
 
 		if len(files) == 0 {
-			prompt += "No files\n"
+			slog.Debug("No valid files in dir", "dir", dir)
+			return nil
 		} else {
 			prompt += "Files:\n"
 			for _, file := range files {
@@ -235,18 +236,6 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 
 		prompt += "</Directory Information>\nDo not guess at any information. Only use the provided text. Is it useful to write a summary of this directory? If it is, reply with the yaml file. If it is not, reply with 'no'."
 		slog.Debug("Prompting AI", "prompt", prompt)
-
-		ymlPath := filepath.Join(d, "ai_knowledge.yaml")
-		var ans string
-		if !options.dryRun {
-			var err error
-			ans, err = aiClient.Prompt(context.TODO(), aihelpers.PromptRequest{
-				Prompt: prompt,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to prompt AI: %w", err)
-			}
-		}
 
 		if options.logPrompt {
 			fl, err := os.Create(filepath.Join(d, "ai_knowledge_prompt.txt"))
@@ -259,6 +248,18 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 			if err != nil {
 				slog.Error("failed to write ai prompt file", "err", err)
 				return err
+			}
+		}
+
+		ymlPath := filepath.Join(d, "ai_knowledge.yaml")
+		var ans string
+		if !options.dryRun {
+			var err error
+			ans, err = aiClient.Prompt(context.TODO(), aihelpers.PromptRequest{
+				Prompt: prompt,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to prompt AI: %w", err)
 			}
 		}
 
@@ -315,7 +316,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	cmd = exec.Command("git", "diff", string(currentBranch), defaultBranchName)
 	diffOutput, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get diff: %w", err)
+		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
 	}
 
 	// Gather context from ai_knowledge.yaml
