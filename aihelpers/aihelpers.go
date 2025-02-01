@@ -15,6 +15,8 @@ type AIClient struct {
 	Client *openai.Client
 }
 
+// I want to be able to use local LLM, integrate with ollama. ai!
+
 // NewOpenAIClient initializes a new OpenAI client with the API key and model.
 func NewOpenAIClient(apiKey, model string) *AIClient {
 	return &AIClient{
