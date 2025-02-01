@@ -13,14 +13,15 @@ if [[ $# -eq 0 ]]; then
     usage
 fi
 
+cd ..
 # Process options
 for arg in "$@"; do
     case $arg in
         --prompts)
-            rm -rf ai_prompt.txt ai_knowledge_prompt.txt ai_summary_prompt.txt ai_review_prompt.txt
+            find . -type f \( -name "ai_prompt.txt" -o -name "ai_knowledge_prompt.txt" -o -name "ai_summary_prompt.txt" -o -name "ai_review_prompt.txt" \) -delete
             ;;
         --all)
-            rm -rf ai_*
+            find . -type f -name "ai_*" -delete
             ;;
         *)
             usage
