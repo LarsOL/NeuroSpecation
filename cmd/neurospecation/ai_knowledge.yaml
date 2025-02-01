@@ -1,0 +1,36 @@
+software_directory:
+  name: cmd/neurospecation
+  description: This directory primarily contains the code for creating AI-based operations such as updating a knowledge base, creating a README file, and reviewing pull requests.
+
+key_business_processes:
+  - Update the knowledge base of AI with current directory information.
+  - Generate concise README files for directories using AI.
+  - Review pull requests by analyzing code differences and providing feedback.
+
+module_explanation:
+  module_name: Neurospecation
+  purpose: Provides an interface for AI-based directory analyses which includes generating documentation and reviewing code changes.
+  features:
+    - Utilize AI models to generate informative documentation and perform code reviews.
+    - Model selection and logging preferences through command-line flags.
+
+architectural_patterns:
+  type: Command Line Interface (CLI)
+  description: The software uses a CLI pattern to allow users to run different operations (knowledge update, README creation, PR review) through command-line flags. Each command interacts with AI to perform the required tasks.
+  
+key_files:
+  - main.go: The main entry point for the directory. It initializes flags, configurations, and executes the primary functionality (AI-based operations).
+
+key_links_to_other_modules:
+  - aihelpers: Interfaces with AI models to execute tasks like generating documentation and code reviews.
+  - dirhelper: Manages directory traversal and file content extraction.
+
+additional_information:
+  versioning:
+    version: dev
+    commit: none
+    date: unknown
+  dependencies:
+    - OpenAI API: Utilized for interacting with AI models, governed by the environment variable `OPENAI_API_KEY`.
+  execution:
+    - Command-line flags control the different features enabled, such as `-dr` for dry-run mode, `-uk` to update the knowledge base, etc.

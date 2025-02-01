@@ -1,0 +1,40 @@
+software_directory:
+  name: aihelpers
+  description: A package to interact with OpenAI's API using a client.
+  business_processes:
+    - Interfacing with OpenAI's API for prompt-based text generation.
+  module:
+    name: aihelpers
+    language: Go
+  architectural_patterns:
+    - Client-Server: The AIClient acts as a client to communicate with the OpenAI API server.
+  key_files:
+    - aihelpers.go: Contains the main logic for interacting with the OpenAI API.
+  key_components:
+    - AIClient:
+        description: Data structure representing an OpenAI client.
+        fields:
+          - APIKey: string, used for authentication with OpenAI.
+          - Model: string, specifies the AI model for requests.
+          - Client: *openai.Client, OpenAI client instance for API interaction.
+    - NewOpenAIClient:
+        description: Function to initialize a new AIClient with API key and model.
+    - SetModel:
+        description: Method to set the AI model to use for requests.
+    - PromptRequest:
+        description: Structure to encapsulate the parameters for making a prompt request.
+        fields:
+          - Prompt: string, user input to send to OpenAI.
+          - MaxTokens: int, optional maximum number of tokens for the response.
+          - Temperature: float64, optional, affects the randomness of the response.
+    - Prompt:
+        description: Method to send a prompt to OpenAI and receive a response.
+  identified_issues:
+    - Enhancements:
+      - Convert the `Prompt` function to a streaming version to handle large data without high memory usage.
+    - TODO: Use `PromptRequest` struct more effectively to tailor API requests.
+  dependencies:
+    - openai-go: A library client for OpenAI's API.
+  context_links:
+    - Relies on openai-go library for OpenAI API interactions.
+

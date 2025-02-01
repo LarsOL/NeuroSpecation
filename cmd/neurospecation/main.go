@@ -39,7 +39,7 @@ func main() {
 	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
 	logPrompt := flag.Bool("lp", false, "Log the prompt sent to the AI")
 	updateKnowledge := flag.Bool("uk", false, "Update the knowledge base")
-	model := flag.String("m", "gpt-4o-mini", "The model to use for AI requests")
+	model := flag.String("m", "gpt-4o", "The model to use for AI requests")
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
 	reviewPR := flag.Bool("r", false, "Review pull requests")
 	help := flag.Bool("h", false, "Show help")
