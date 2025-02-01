@@ -12,13 +12,26 @@ import (
 type AIClient struct {
 	APIKey string
 	Model  string
-	Client *openai.Client
+	Client   *openai.Client
+	LocalLLM bool
 }
-
-// I want to be able to use local LLM, integrate with ollama. ai!
 
 // NewOpenAIClient initializes a new OpenAI client with the API key and model.
 func NewOpenAIClient(apiKey, model string) *AIClient {
+	return &AIClient{
+		APIKey: apiKey,
+		Model:  model,
+		Client: openai.NewClient(
+			option.WithAPIKey(apiKey), // defaults to os.LookupEnv("OPENAI_API_KEY")
+		),
+	}
+}
+
+// NewLocalLLMClient initializes a new client for a local LLM using Ollama.
+func NewLocalLLMClient() *AIClient {
+	return &AIClient{
+		LocalLLM: true,
+	}
 	return &AIClient{
 		APIKey: apiKey,
 		Model:  model,
