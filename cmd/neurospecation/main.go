@@ -9,14 +9,15 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-	"os/exec"
 )
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
 const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled software engineer to understand the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
 const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and provide valuable feedback. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
+
 type Options struct {
 	dryRun          bool
 	debug           bool
@@ -318,6 +319,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	}
 
 	// Gather context from ai_knowledge.yaml
+	// Instead of using the passed dir, instead look at the diff and gather all the ai_knowledge.yaml for the changed files (same directory).
 	knowledgePath := filepath.Join(dir, "ai_knowledge.yaml")
 	knowledgeContent, err := os.ReadFile(knowledgePath)
 	if err != nil {
@@ -325,7 +327,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	}
 
 	// Prepare the prompt for the AI
-	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
+	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n</Repo Context>\n" + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
 
 	slog.Debug("Prompting AI for review", "prompt", prompt)
 	var reviewOutput string

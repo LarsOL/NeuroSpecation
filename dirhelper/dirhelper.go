@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 // FileContent represents a file with its name and content.
@@ -21,31 +20,21 @@ func (f FileContent) FullPath() string {
 	return filepath.Join(f.Path, f.Name)
 }
 
-func FilterNodes(name string, fileType fs.FileMode) bool {
+func IsCodeFile(name string, fileType fs.FileMode) bool {
+	// return false if the file is not a code file. This is to avoid costly token usage on uneeded context. ai!
+	return true
+}
+
+func FilterNodes(node fs.DirEntry) bool {
 	skipNodes := []string{".git", ".idea", "ai_prompt.txt", "ai_knowledge.yml", "vendor", ".vscode"}
 
-	if slices.Contains(skipNodes, name) {
-		return false
-	}
-	if strings.HasSuffix(name, ".jpg") {
-		return false
-	}
-	if strings.HasSuffix(name, ".png") {
-		return false
-	}
-	if strings.HasSuffix(name, ".svg") {
-		return false
-	}
-	if strings.HasSuffix(name, ".css") {
-		return false
-	}
-	if strings.HasSuffix(name, ".ico") {
+	if slices.Contains(skipNodes, node.Name()) {
 		return false
 	}
 	return true
 }
 
-type FilterFunc func(nodeName string, fileType fs.FileMode) bool
+type FilterFunc func(node fs.DirEntry) bool
 
 // WalkDirectories traverses a directory tree and performs a custom action on each directory.
 // `root` is the starting directory.
@@ -75,7 +64,7 @@ func WalkDirectories(root string, onDir func(directory string, files []FileConte
 
 		// Only process directories
 		if info.IsDir() {
-			if !filterNodes(info.Name(), info.Type()) {
+			if !filterNodes(info) {
 				return filepath.SkipDir
 			}
 			files, subdirs, err := readDirectoryContents(path, filterNodes)
@@ -101,7 +90,7 @@ func readDirectoryContents(dir string, filterNodes FilterFunc) ([]FileContent, [
 	var subdirs []string
 
 	for _, entry := range entries {
-		if !filterNodes(entry.Name(), entry.Type()) {
+		if !filterNodes(entry) {
 			continue
 		}
 		if entry.IsDir() {
