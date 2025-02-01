@@ -28,6 +28,12 @@ type Options struct {
 	reviewPR        bool
 }
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	debug := flag.Bool("d", false, "Enable debug logging")
 	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
@@ -37,16 +43,23 @@ func main() {
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
 	reviewPR := flag.Bool("r", false, "Review pull requests")
 	help := flag.Bool("h", false, "Show help")
+	ver := flag.Bool("v", false, "Show version")
 
 	flag.Usage = func() {
-		slog.Error("Usage: repotraversal <directory> [flags]")
-		slog.Error("Flags:")
+		slog.Info("Usage: repotraversal <directory> [flags]")
+		slog.Info("Flags:")
 		flag.PrintDefaults()
+		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
 	}
 	flag.Parse()
 
 	if *help {
 		flag.Usage()
+		os.Exit(0)
+	}
+
+	if *ver {
+		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
 		os.Exit(0)
 	}
 
@@ -370,7 +383,7 @@ func getGitBranches() (string, string, error) {
 }
 
 func getGitDiff(currentBranch, defaultBranchName string) (string, error) {
-	cmd := exec.Command("git", "diff", currentBranch, defaultBranchName)
+	cmd := exec.Command("git", "diff", defaultBranchName, currentBranch)
 	diffOutput, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranchName, err)

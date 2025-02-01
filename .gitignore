@@ -144,3 +144,5 @@ ai_prompt.txt
 ai_knowledge_prompt.txt
 ai_summary_prompt.txt
 .aider*
+
+dist/
