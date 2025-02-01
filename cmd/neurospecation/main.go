@@ -14,7 +14,7 @@ import (
 )
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled developer to understand the directory."
-const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled developer to understand the the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
+const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled developer to understand the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
 
 type Options struct {
 	dryRun          bool
@@ -33,6 +33,7 @@ func main() {
 	model := flag.String("m", "gpt-4o-mini", "The model to use for AI requests")
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
 	help := flag.Bool("h", false, "Show help")
+
 	flag.Usage = func() {
 		slog.Error("Usage: repotraversal <directory> [flags]")
 		slog.Error("Flags:")
@@ -56,7 +57,6 @@ func main() {
 	}
 
 	directory := flag.Arg(0)
-
 	if directory == "" {
 		directory = "."
 	}
@@ -181,7 +181,6 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 	}
 	ans = strings.TrimPrefix(ans, "```markdown\n")
 	ans = strings.TrimSuffix(ans, "\n```")
-	// write the yml file
 	f, err := os.Create(ymlPath)
 	if err != nil {
 		slog.Error("failed to create yaml file", "err", err)
@@ -199,7 +198,6 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	updateAIKnowledge := func(d string, files []dirhelper.FileContent, subdirs []string) error {
 		slog.Info("Processing Directory", "Dir", d)
-		// Build a summary of the files in the directory by prompting the AI
 		prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
 		prompt += "Directory: " + d + "\n"
 
@@ -262,7 +260,6 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		}
 		ans = strings.TrimPrefix(ans, "```yaml\n")
 		ans = strings.TrimSuffix(ans, "\n```")
-		// write the yml file
 		f, err := os.Create(ymlPath)
 		if err != nil {
 			slog.Error("failed to create yaml file", "err", err)
