@@ -21,8 +21,16 @@ func (f FileContent) FullPath() string {
 }
 
 func IsCodeFile(name string, fileType fs.FileMode) bool {
-	// return false if the file is not a code file. This is to avoid costly token usage on uneeded context. ai!
-	return true
+	// Define a list of common code file extensions
+	codeFileExtensions := []string{".go", ".py", ".js", ".java", ".c", ".cpp", ".cs", ".rb", ".php", ".html", ".css"}
+
+	// Check if the file has one of the code file extensions
+	for _, ext := range codeFileExtensions {
+		if filepath.Ext(name) == ext {
+			return true
+		}
+	}
+	return false
 }
 
 func FilterNodes(node fs.DirEntry) bool {

@@ -326,7 +326,6 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return fmt.Errorf("failed to read ai_knowledge.yaml: %w", err)
 	}
 
-	// Prepare the prompt for the AI
 	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n</Repo Context>\n" + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
 
 	slog.Debug("Prompting AI for review", "prompt", prompt)
