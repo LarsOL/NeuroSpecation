@@ -83,6 +83,45 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 	return chatCompletion.Choices[0].Message.Content, nil
 }
 
+import (
+	"context"
+	"fmt"
+	"github.com/ollama/ollama/api"
+)
+
 func (client *AIClient) promptLocalLLM(req PromptRequest) (string, error) {
-	return "Local LLM response", nil
+	ollamaClient, err := api.ClientFromEnvironment()
+	if err != nil {
+		return "", fmt.Errorf("failed to create Ollama client: %w", err)
+	}
+
+	messages := []api.Message{
+		{
+			Role:    "system",
+			Content: "Provide very brief, concise responses",
+		},
+		{
+			Role:    "user",
+			Content: req.Prompt,
+		},
+	}
+
+	ctx := context.Background()
+	chatReq := &api.ChatRequest{
+		Model:    "llama3.2",
+		Messages: messages,
+	}
+
+	var responseContent string
+	respFunc := func(resp api.ChatResponse) error {
+		responseContent += resp.Message.Content
+		return nil
+	}
+
+	err = ollamaClient.Chat(ctx, chatReq, respFunc)
+	if err != nil {
+		return "", fmt.Errorf("failed to get response from local LLM: %w", err)
+	}
+
+	return responseContent, nil
 }
