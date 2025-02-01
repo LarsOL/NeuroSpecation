@@ -129,15 +129,15 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 		return err
 	}
 
-	ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
-	if err != nil {
-		return err
-	}
-
 	if options.logPrompt {
 		if err := logPromptToFile(dir, "ai_summary_prompt.txt", prompt); err != nil {
 			return err
 		}
+	}
+
+	ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+	if err != nil {
+		return err
 	}
 
 	return writeReadMe(dir, ans, options.dryRun)
@@ -223,15 +223,15 @@ func writeReadMe(dir, ans string, dryRun bool) error {
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	err := dirhelper.WalkDirectories(dir, func(dir string, files []dirhelper.FileContent, subdirs []string) error {
 		prompt := createKnowledgeBasePrompt(dir, files, subdirs)
-		ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
-		if err != nil {
-			return err
-		}
-
 		if options.logPrompt {
 			if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
 				return err
 			}
+		}
+
+		ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+		if err != nil {
+			return err
 		}
 
 		return writeKnowledgeBase(dir, ans, options.dryRun)
@@ -243,6 +243,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 }
 
 func createKnowledgeBasePrompt(dir string, files []dirhelper.FileContent, subdirs []string) string {
+	var sb strings.Builder
 	prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
 	prompt += "Directory: " + dir + "\n"
 
