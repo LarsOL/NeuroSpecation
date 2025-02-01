@@ -144,13 +144,15 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 }
 
 func gatherAIKnowledgeForReadMe(dir string) (string, error) {
-	prompt := ReadmePrompt + "\n<Summarised AI knowledge base>\n"
+	var prompt strings.Builder
+	prompt.WriteString(ReadmePrompt)
+	prompt.WriteString("\n<Summarised AI knowledge base>\n")
 	err := dirhelper.WalkDirectories(dir, func(d string, files []dirhelper.FileContent, subdirs []string) error {
 		slog.Info("Processing Directory", "Dir", d)
 		for _, file := range files {
 			slog.Debug("Processing file", "File", file.Name)
-			prompt += "- " + file.FullPath() + "\n"
-			prompt += file.Content + "\n"
+			prompt.WriteString("- " + file.FullPath() + "\n")
+			prompt.WriteString(file.Content + "\n")
 		}
 		return nil
 	}, func(node fs.DirEntry) bool {
@@ -159,8 +161,8 @@ func gatherAIKnowledgeForReadMe(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error walking directories: %w", err)
 	}
-	prompt += "</Summarised AI knowledge base>\n"
-	return prompt, nil
+	prompt.WriteString("</Summarised AI knowledge base>\n")
+	return prompt.String(), nil
 }
 
 func promptAI(ctx context.Context, aiClient *aihelpers.AIClient, prompt string, dryRun bool) (string, error) {
@@ -243,31 +245,33 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 }
 
 func createKnowledgeBasePrompt(dir string, files []dirhelper.FileContent, subdirs []string) string {
-	var sb strings.Builder
-	prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
-	prompt += "Directory: " + dir + "\n"
+	var prompt strings.Builder
+	prompt.WriteString(KnowledgeBasePrompt)
+	prompt.WriteString("\n<Directory Information>\n")
+	prompt.WriteString("Directory: " + dir + "\n")
 
 	if len(subdirs) == 0 {
-		prompt += "No subdirectories\n"
+		prompt.WriteString("No subdirectories\n")
 	} else {
-		prompt += "Subdirectories:\n"
+		prompt.WriteString("Subdirectories:\n")
 		for _, subdir := range subdirs {
-			prompt += "- " + subdir + "\n"
+			prompt.WriteString("- " + subdir + "\n")
 		}
 	}
 
 	if len(files) == 0 {
 		slog.Debug("No valid files in dir", "dir", dir)
+		return ""
 	} else {
-		prompt += "Files:\n"
+		prompt.WriteString("Files:\n")
 		for _, file := range files {
-			prompt += "- " + file.Name + "\n"
-			prompt += file.Content + "\n"
+			prompt.WriteString("- " + file.Name + "\n")
+			prompt.WriteString(file.Content + "\n")
 		}
 	}
 
-	prompt += "</Directory Information>\nDo not guess at any information. Only use the provided text. Is it useful to write a summary of this directory? If it is, reply with the yaml file. If it is not, reply with 'no'."
-	return prompt
+	prompt.WriteString("</Directory Information>\nDo not guess at any information. Only use the provided text. Is it useful to write a summary of this directory? If it is, reply with the yaml file. If it is not, reply with 'no'.")
+	return prompt.String()
 }
 
 func writeKnowledgeBase(dir, ans string, dryRun bool) error {
@@ -282,7 +286,8 @@ func writeKnowledgeBase(dir, ans string, dryRun bool) error {
 		return nil
 	}
 	ans = strings.TrimPrefix(ans, "```yaml\n")
-	ans = strings.TrimSuffix(ans, "\n```")
+
+	ans, _, _ = strings.Cut(ans, "```")
 	f, err := os.Create(ymlPath)
 	if err != nil {
 		slog.Error("failed to create yaml file", "err", err)
@@ -304,6 +309,10 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
+	if currentBranch == defaultBranchName {
+		return fmt.Errorf("current branch %s, same as default branch %s", currentBranch, defaultBranchName)
+	}
+
 	diffOutput, err := getGitDiff(currentBranch, defaultBranchName)
 	if err != nil {
 		return err
@@ -314,12 +323,10 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
-	knowledgeContent, err := gatherKnowledgeForChangedFiles(gitRoot, diffOutput)
+	prompt, err := createReviewPrompt(gitRoot, diffOutput)
 	if err != nil {
 		return err
 	}
-
-	prompt := createReviewPrompt(knowledgeContent, diffOutput)
 
 	if options.logPrompt {
 		if err := logPromptToFile(dir, "ai_review_prompt.txt", prompt); err != nil {
@@ -371,7 +378,7 @@ func getGitRoot() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func gatherKnowledgeForChangedFiles(gitRoot, diffOutput string) (string, error) {
+func createReviewPrompt(gitRoot, diffOutput string) (string, error) {
 	changedFiles := strings.Split(diffOutput, "\n")
 	knowledgeContent := ""
 	for _, line := range changedFiles {
@@ -389,11 +396,8 @@ func gatherKnowledgeForChangedFiles(gitRoot, diffOutput string) (string, error) 
 			}
 		}
 	}
-	return knowledgeContent, nil
-}
-
-func createReviewPrompt(knowledgeContent, diffOutput string) string {
-	return ReviewPrompt + "\n<Repo Context>\n" + knowledgeContent + "\n</Repo Context>\n" + "\n<Diff>\n" + diffOutput + "\n</Diff>\n"
+	reviewPrompt := ReviewPrompt + "\n<Repo Context>\n" + knowledgeContent + "\n</Repo Context>\n" + "\n<Diff>\n" + diffOutput + "\n</Diff>\n"
+	return reviewPrompt, nil
 }
 
 func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
