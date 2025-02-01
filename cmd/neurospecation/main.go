@@ -313,7 +313,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	defaultBranchName = strings.TrimPrefix(defaultBranchName, "origin/")
 
 	// Get the diff between the current branch and the default branch
-	cmd = exec.Command("git", "diff", string(currentBranch), defaultBranchName)
+	cmd = exec.Command("git", "diff", strings.TrimSpace(string(currentBranch)), defaultBranchName)
 	diffOutput, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
