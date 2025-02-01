@@ -98,6 +98,7 @@ func main() {
 	}
 
 	if o.updateKnowledge {
+		slog.Info("Updating AI knowledge base")
 		err := UpdateKnowledgeBase(ctx, directory, aiClient, o)
 		if err != nil {
 			slog.Error("Error updating knowledge base", "err", err)
@@ -105,6 +106,7 @@ func main() {
 		}
 	}
 	if o.createReadme {
+		slog.Info("Creating AI README")
 		err := CreateReadMe(ctx, directory, aiClient, o)
 		if err != nil {
 			slog.Error("Error creating readme", "err", err)
@@ -112,6 +114,7 @@ func main() {
 		}
 	}
 	if o.reviewPR {
+		slog.Info("Creating PR review")
 		err := ReviewPullRequests(ctx, directory, aiClient, o)
 		if err != nil {
 			slog.Error("Error reviewing pull requests", "err", err)
@@ -320,10 +323,6 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
 	}
 
-	// Gather context from ai_knowledge.yaml for changed files
-	changedFiles := strings.Split(string(diffOutput), "\n")
-	knowledgeContent := ""
-
 	// Determine the git root directory
 	gitRootCmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	gitRootOutput, err := gitRootCmd.Output()
@@ -332,6 +331,9 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	}
 	gitRoot := strings.TrimSpace(string(gitRootOutput))
 
+	// Gather context from ai_knowledge.yaml for changed files
+	changedFiles := strings.Split(string(diffOutput), "\n")
+	knowledgeContent := ""
 	for _, line := range changedFiles {
 		if strings.HasPrefix(line, "diff --git") {
 			parts := strings.Split(line, " ")
@@ -350,18 +352,6 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 
 	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n</Repo Context>\n" + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
 
-	slog.Debug("Prompting AI for review", "prompt", prompt)
-	var reviewOutput string
-	if !options.dryRun {
-		var err error
-		reviewOutput, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
-			Prompt: prompt,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to prompt AI: %w", err)
-		}
-	}
-
 	if options.logPrompt {
 		fl, err := os.Create(filepath.Join(dir, "ai_review_prompt.txt"))
 		if err != nil {
@@ -373,6 +363,18 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		if err != nil {
 			slog.Error("failed to write ai review prompt file", "err", err)
 			return err
+		}
+	}
+
+	slog.Debug("Prompting AI for review", "prompt", prompt)
+	var reviewOutput string
+	if !options.dryRun {
+		var err error
+		reviewOutput, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
+			Prompt: prompt,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to prompt AI: %w", err)
 		}
 	}
 

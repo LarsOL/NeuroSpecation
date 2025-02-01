@@ -20,13 +20,14 @@ func (f FileContent) FullPath() string {
 	return filepath.Join(f.Path, f.Name)
 }
 
-func IsCodeFile(name string, fileType fs.FileMode) bool {
-	// Define a list of common code file extensions
-	codeFileExtensions := []string{".go", ".py", ".js", ".java", ".c", ".cpp", ".cs", ".rb", ".php", ".html", ".css"}
+func IsCodeFile(node fs.DirEntry) bool {
+	if node.IsDir() {
+		return true
+	}
 
-	// Check if the file has one of the code file extensions
+	codeFileExtensions := []string{".go", ".py", ".js", ".java", ".c", ".cpp", ".cs", ".rb", ".php", ".html", ".css"}
 	for _, ext := range codeFileExtensions {
-		if filepath.Ext(name) == ext {
+		if filepath.Ext(node.Name()) == ext {
 			return true
 		}
 	}
@@ -35,7 +36,9 @@ func IsCodeFile(name string, fileType fs.FileMode) bool {
 
 func FilterNodes(node fs.DirEntry) bool {
 	skipNodes := []string{".git", ".idea", "ai_prompt.txt", "ai_knowledge.yml", "vendor", ".vscode"}
-
+	if !IsCodeFile(node) {
+		return false
+	}
 	if slices.Contains(skipNodes, node.Name()) {
 		return false
 	}
