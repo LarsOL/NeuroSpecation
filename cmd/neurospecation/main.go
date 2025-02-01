@@ -293,6 +293,10 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	// Implement the logic to compare the diff between the current branch and the default branch
-	// Use the ReviewPrompt to prompt the AI, and the ai_knowledge.yaml from the changed directory to provide context.
+	// Based on the diff gather the relevant ai_knowledge.yaml to provide context to the ai
+	// Use the ReviewPrompt to prompt the AI.
+	// For now write the output into a AI-Review.md file
+	// Follow the pattern from the other functions, provide a dry-run and debug option. ai!
+	
 	return nil
 }
