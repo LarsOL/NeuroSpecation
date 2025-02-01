@@ -124,69 +124,77 @@ func main() {
 }
 
 func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	prompt := ReadmePrompt + "\n<Summarised AI knowledge base>\n"
-	gatherAIKnowledge := func(d string, files []dirhelper.FileContent, subdirs []string) error {
-		slog.Info("Processing Directory", "Dir", d)
-
-		if len(files) == 0 {
-			slog.Debug("No knowledge files in directory", "Dir", d)
-		} else {
-			for _, file := range files {
-				slog.Debug("Processing file", "File", file.Name)
-				prompt += "- " + file.FullPath() + "\n"
-				prompt += file.Content + "\n"
-			}
-		}
-		return nil
-	}
-	onlyAIKnowledgeFiles := func(node fs.DirEntry) bool {
-		if node.IsDir() {
-			slog.Debug("Allowing sub dir", "dir", node.Name())
-			return true
-		}
-		if node.Name() == "ai_knowledge.yaml" {
-			slog.Debug("Allowing file", "File", node.Name())
-			return true
-		}
-		slog.Debug("Rejecting file", "File", node.Name())
-		return false
-	}
-
-	err := dirhelper.WalkDirectories(dir, gatherAIKnowledge, onlyAIKnowledgeFiles)
+	prompt, err := gatherAIKnowledgeForReadMe(dir)
 	if err != nil {
-		slog.Error("Error walking directories", "err", err)
-		os.Exit(1)
+		return err
 	}
-	prompt += "</Summarised AI knowledge base>\n"
 
-	slog.Debug("Prompting AI", "prompt", prompt)
-	var ans string
-	if !options.dryRun {
-		var err error
-		ans, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
-			Prompt: prompt,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to prompt AI: %w", err)
-		}
+	ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+	if err != nil {
+		return err
 	}
 
 	if options.logPrompt {
-		fl, err := os.Create(filepath.Join(dir, "ai_summary_prompt.txt"))
-		if err != nil {
-			slog.Error("failed to create ai prompt file", "err", err)
-			return err
-		}
-
-		_, err = fl.WriteString(prompt)
-		if err != nil {
-			slog.Error("failed to write ai prompt file", "err", err)
+		if err := logPromptToFile(dir, "ai_summary_prompt.txt", prompt); err != nil {
 			return err
 		}
 	}
 
+	return writeReadMe(dir, ans, options.dryRun)
+}
+
+func gatherAIKnowledgeForReadMe(dir string) (string, error) {
+	prompt := ReadmePrompt + "\n<Summarised AI knowledge base>\n"
+	err := dirhelper.WalkDirectories(dir, func(d string, files []dirhelper.FileContent, subdirs []string) error {
+		slog.Info("Processing Directory", "Dir", d)
+		for _, file := range files {
+			slog.Debug("Processing file", "File", file.Name)
+			prompt += "- " + file.FullPath() + "\n"
+			prompt += file.Content + "\n"
+		}
+		return nil
+	}, func(node fs.DirEntry) bool {
+		return node.IsDir() || node.Name() == "ai_knowledge.yaml"
+	})
+	if err != nil {
+		return "", fmt.Errorf("error walking directories: %w", err)
+	}
+	prompt += "</Summarised AI knowledge base>\n"
+	return prompt, nil
+}
+
+func promptAI(ctx context.Context, aiClient *aihelpers.AIClient, prompt string, dryRun bool) (string, error) {
+	if dryRun {
+		slog.Debug("Dry-run mode, skipping AI prompt")
+		return "", nil
+	}
+	slog.Debug("Prompting AI", "prompt", prompt)
+	ans, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
+	if err != nil {
+		return "", fmt.Errorf("failed to prompt AI: %w", err)
+	}
+	return ans, nil
+}
+
+func logPromptToFile(dir, filename, prompt string) error {
+	fl, err := os.Create(filepath.Join(dir, filename))
+	if err != nil {
+		slog.Error("failed to create ai prompt file", "err", err)
+		return err
+	}
+	defer fl.Close()
+
+	_, err = fl.WriteString(prompt)
+	if err != nil {
+		slog.Error("failed to write ai prompt file", "err", err)
+		return err
+	}
+	return nil
+}
+
+func writeReadMe(dir, ans string, dryRun bool) error {
 	ymlPath := filepath.Join(dir, "ai_README.md")
-	if options.dryRun {
+	if dryRun {
 		slog.Debug("skipping AI prompt, would have written file to:", "path", ymlPath)
 		return nil
 	}
@@ -202,6 +210,7 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 		slog.Error("failed to create yaml file", "err", err)
 		return err
 	}
+	defer f.Close()
 
 	_, err = f.WriteString(ans)
 	if err != nil {
@@ -212,127 +221,157 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 }
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	updateAIKnowledge := func(dir string, files []dirhelper.FileContent, subdirs []string) error {
-		slog.Info("Processing Directory", "Dir", dir)
-		prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
-		prompt += "Directory: " + dir + "\n"
-
-		if len(subdirs) == 0 {
-			prompt += "No subdirectories\n"
-		} else {
-			prompt += "Subdirectories:\n"
-			for _, subdir := range subdirs {
-				prompt += "- " + subdir + "\n"
-			}
+	err := dirhelper.WalkDirectories(dir, func(dir string, files []dirhelper.FileContent, subdirs []string) error {
+		prompt := createKnowledgeBasePrompt(dir, files, subdirs)
+		ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+		if err != nil {
+			return err
 		}
-
-		if len(files) == 0 {
-			slog.Debug("No valid files in dir", "dir", dir)
-			return nil
-		} else {
-			prompt += "Files:\n"
-			for _, file := range files {
-				prompt += "- " + file.Name + "\n"
-				prompt += file.Content + "\n"
-			}
-		}
-
-		prompt += "</Directory Information>\nDo not guess at any information. Only use the provided text. Is it useful to write a summary of this directory? If it is, reply with the yaml file. If it is not, reply with 'no'."
-		slog.Debug("Prompting AI", "prompt", prompt)
 
 		if options.logPrompt {
-			fl, err := os.Create(filepath.Join(dir, "ai_knowledge_prompt.txt"))
-			if err != nil {
-				slog.Error("failed to create ai prompt file", "err", err)
-				return err
-			}
-
-			_, err = fl.WriteString(prompt)
-			if err != nil {
-				slog.Error("failed to write ai prompt file", "err", err)
+			if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
 				return err
 			}
 		}
 
-		ymlPath := filepath.Join(dir, "ai_knowledge.yaml")
-		var ans string
-		if !options.dryRun {
-			var err error
-			ans, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
-				Prompt: prompt,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to prompt AI: %w", err)
-			}
-		}
-
-		if options.dryRun {
-			slog.Debug("skipping AI prompt, would have written file to:", "path", ymlPath)
-			return nil
-		}
-
-		if ans == "no" {
-			slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
-			return nil
-		}
-		ans = strings.TrimPrefix(ans, "```yaml\n")
-		ans = strings.TrimSuffix(ans, "\n```")
-		f, err := os.Create(ymlPath)
-		if err != nil {
-			slog.Error("failed to create yaml file", "err", err)
-			return err
-		}
-
-		_, err = f.WriteString(ans)
-		if err != nil {
-			slog.Error("failed to write yaml file", "err", err)
-			return err
-		}
-
-		return nil
-	}
-	err := dirhelper.WalkDirectories(dir, updateAIKnowledge, nil)
+		return writeKnowledgeBase(dir, ans, options.dryRun)
+	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to walk directories: %w", err)
 	}
 	return nil
 }
 
+func createKnowledgeBasePrompt(dir string, files []dirhelper.FileContent, subdirs []string) string {
+	prompt := KnowledgeBasePrompt + "\n<Directory Information>\n"
+	prompt += "Directory: " + dir + "\n"
+
+	if len(subdirs) == 0 {
+		prompt += "No subdirectories\n"
+	} else {
+		prompt += "Subdirectories:\n"
+		for _, subdir := range subdirs {
+			prompt += "- " + subdir + "\n"
+		}
+	}
+
+	if len(files) == 0 {
+		slog.Debug("No valid files in dir", "dir", dir)
+	} else {
+		prompt += "Files:\n"
+		for _, file := range files {
+			prompt += "- " + file.Name + "\n"
+			prompt += file.Content + "\n"
+		}
+	}
+
+	prompt += "</Directory Information>\nDo not guess at any information. Only use the provided text. Is it useful to write a summary of this directory? If it is, reply with the yaml file. If it is not, reply with 'no'."
+	return prompt
+}
+
+func writeKnowledgeBase(dir, ans string, dryRun bool) error {
+	ymlPath := filepath.Join(dir, "ai_knowledge.yaml")
+	if dryRun {
+		slog.Debug("skipping AI prompt, would have written file to:", "path", ymlPath)
+		return nil
+	}
+
+	if ans == "no" {
+		slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
+		return nil
+	}
+	ans = strings.TrimPrefix(ans, "```yaml\n")
+	ans = strings.TrimSuffix(ans, "\n```")
+	f, err := os.Create(ymlPath)
+	if err != nil {
+		slog.Error("failed to create yaml file", "err", err)
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(ans)
+	if err != nil {
+		slog.Error("failed to write yaml file", "err", err)
+		return err
+	}
+	return nil
+}
+
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	// Get the current branch name
+	currentBranch, defaultBranchName, err := getGitBranches()
+	if err != nil {
+		return err
+	}
+
+	diffOutput, err := getGitDiff(currentBranch, defaultBranchName)
+	if err != nil {
+		return err
+	}
+
+	gitRoot, err := getGitRoot()
+	if err != nil {
+		return err
+	}
+
+	knowledgeContent, err := gatherKnowledgeForChangedFiles(gitRoot, diffOutput)
+	if err != nil {
+		return err
+	}
+
+	prompt := createReviewPrompt(knowledgeContent, diffOutput)
+
+	if options.logPrompt {
+		if err := logPromptToFile(dir, "ai_review_prompt.txt", prompt); err != nil {
+			return err
+		}
+	}
+
+	reviewOutput, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+	if err != nil {
+		return err
+	}
+
+	return writeReviewFile(dir, reviewOutput, options.dryRun)
+}
+
+func getGitBranches() (string, string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	output, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get current branch: %w", err)
+		return "", "", fmt.Errorf("failed to get current branch: %w", err)
 	}
 	currentBranch := strings.TrimSpace(string(output))
 
-	// Get the default branch name (usually 'main' or 'master')
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
 	defaultBranch, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get default branch: %w", err)
+		return "", "", fmt.Errorf("failed to get default branch: %w", err)
 	}
 	defaultBranchName := strings.TrimSpace(string(defaultBranch))
 	defaultBranchName = strings.TrimPrefix(defaultBranchName, "origin/")
+	return currentBranch, defaultBranchName, nil
+}
 
-	// Get the diff between the current branch and the default branch
-	cmd = exec.Command("git", "diff", string(currentBranch), defaultBranchName)
+func getGitDiff(currentBranch, defaultBranchName string) (string, error) {
+	cmd := exec.Command("git", "diff", currentBranch, defaultBranchName)
 	diffOutput, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranch, err)
+		return "", fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranchName, err)
 	}
+	return string(diffOutput), nil
+}
 
-	// Determine the git root directory
-	gitRootCmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	gitRootOutput, err := gitRootCmd.Output()
+func getGitRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get git root directory: %w", err)
+		return "", fmt.Errorf("failed to get git root directory: %w", err)
 	}
-	gitRoot := strings.TrimSpace(string(gitRootOutput))
+	return strings.TrimSpace(string(output)), nil
+}
 
-	// Gather context from ai_knowledge.yaml for changed files
-	changedFiles := strings.Split(string(diffOutput), "\n")
+func gatherKnowledgeForChangedFiles(gitRoot, diffOutput string) (string, error) {
+	changedFiles := strings.Split(diffOutput, "\n")
 	knowledgeContent := ""
 	for _, line := range changedFiles {
 		if strings.HasPrefix(line, "diff --git") {
@@ -349,37 +388,16 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 			}
 		}
 	}
+	return knowledgeContent, nil
+}
 
-	prompt := ReviewPrompt + "\n<Repo Context>\n" + string(knowledgeContent) + "\n</Repo Context>\n" + "\n<Diff>\n" + string(diffOutput) + "\n</Diff>\n"
+func createReviewPrompt(knowledgeContent, diffOutput string) string {
+	return ReviewPrompt + "\n<Repo Context>\n" + knowledgeContent + "\n</Repo Context>\n" + "\n<Diff>\n" + diffOutput + "\n</Diff>\n"
+}
 
-	if options.logPrompt {
-		fl, err := os.Create(filepath.Join(dir, "ai_review_prompt.txt"))
-		if err != nil {
-			slog.Error("failed to create ai review prompt file", "err", err)
-			return err
-		}
-
-		_, err = fl.WriteString(prompt)
-		if err != nil {
-			slog.Error("failed to write ai review prompt file", "err", err)
-			return err
-		}
-	}
-
-	slog.Debug("Prompting AI for review", "prompt", prompt)
-	var reviewOutput string
-	if !options.dryRun {
-		var err error
-		reviewOutput, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
-			Prompt: prompt,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to prompt AI: %w", err)
-		}
-	}
-
+func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
 	reviewFilePath := filepath.Join(dir, "ai_Review.md")
-	if options.dryRun {
+	if dryRun {
 		slog.Debug("skipping AI review, would have written file to:", "path", reviewFilePath)
 		return nil
 	}
@@ -389,12 +407,12 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		slog.Error("failed to create review file", "err", err)
 		return err
 	}
+	defer f.Close()
 
 	_, err = f.WriteString(reviewOutput)
 	if err != nil {
 		slog.Error("failed to write review file", "err", err)
 		return err
 	}
-
 	return nil
 }
