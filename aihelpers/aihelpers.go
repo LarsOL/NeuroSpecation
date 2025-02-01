@@ -10,8 +10,8 @@ import (
 )
 
 type AIClient struct {
-	APIKey string
-	Model  string
+	APIKey   string
+	Model    string
 	Client   *openai.Client
 	LocalLLM bool
 }
@@ -54,7 +54,9 @@ type PromptRequest struct {
 }
 
 // TODO: Convert to a streaming version to avoid large memory usage on large files
-// Prompt sends a prompt to OpenAI and returns the response text.
+// Prompt sends a prompt to chat ai and returns the response text.
+// Add ollama integration for local llm. ai!
+
 func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, error) {
 	if client.APIKey == "" {
 		return "", errors.New("API key is not set")
