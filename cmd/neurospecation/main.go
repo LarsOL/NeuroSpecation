@@ -324,13 +324,20 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	changedFiles := strings.Split(string(diffOutput), "\n")
 	knowledgeContent := ""
 
+	// Determine the git root directory
+	gitRootCmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	gitRootOutput, err := gitRootCmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get git root directory: %w", err)
+	}
+	gitRoot := strings.TrimSpace(string(gitRootOutput))
+
 	for _, line := range changedFiles {
 		if strings.HasPrefix(line, "diff --git") {
 			parts := strings.Split(line, " ")
 			if len(parts) > 2 {
 				filePath := strings.TrimPrefix(parts[2], "a/")
-				// Rather than the passed dir, figure out the git root and use that to calculate the full path. ai!
-				fullPath := filepath.Join(dir, filePath)
+				fullPath := filepath.Join(gitRoot, filePath)
 				dirPath := filepath.Dir(fullPath)
 				knowledgePath := filepath.Join(dirPath, "ai_knowledge.yaml")
 				content, err := os.ReadFile(knowledgePath)
