@@ -13,9 +13,9 @@ import (
 	"strings"
 )
 
-const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled developer to understand the directory."
-const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled developer to understand the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
-
+const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
+const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled software engineer to understand the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
+const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and provide valuable feedback. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
 type Options struct {
 	dryRun          bool
 	debug           bool
@@ -26,6 +26,8 @@ type Options struct {
 }
 
 func main() {
+// Add a new option to "Review PR". This will compare the diff between the current branch and the default branch. Use the the ReviewPrompt to prompt the ai, use the the ai_knowledge.yaml from the changed directory to provide context. ai!
+
 	debug := flag.Bool("d", false, "Enable debug logging")
 	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
 	logPrompt := flag.Bool("lp", false, "Log the prompt sent to the AI")
