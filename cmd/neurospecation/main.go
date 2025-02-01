@@ -302,8 +302,8 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	if err != nil {
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
-
 	currentBranch := strings.TrimSpace(string(output))
+
 	// Get the default branch name (usually 'main' or 'master')
 	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
 	defaultBranch, err := cmd.Output()
