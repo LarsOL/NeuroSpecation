@@ -23,17 +23,17 @@ type Options struct {
 	updateKnowledge bool
 	model           string
 	createReadme    bool
+	reviewPR        bool
 }
 
 func main() {
-// Add a new option to "Review PR". This will compare the diff between the current branch and the default branch. Use the the ReviewPrompt to prompt the ai, use the the ai_knowledge.yaml from the changed directory to provide context. ai!
-
 	debug := flag.Bool("d", false, "Enable debug logging")
 	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
 	logPrompt := flag.Bool("lp", false, "Log the prompt sent to the AI")
 	updateKnowledge := flag.Bool("uk", false, "Update the knowledge base")
 	model := flag.String("m", "gpt-4o-mini", "The model to use for AI requests")
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
+	reviewPR := flag.Bool("r", false, "Review pull requests")
 	help := flag.Bool("h", false, "Show help")
 
 	flag.Usage = func() {
@@ -56,6 +56,7 @@ func main() {
 		updateKnowledge: *updateKnowledge,
 		model:           *model,
 		createReadme:    *createReadme,
+		reviewPR:        *reviewPR,
 	}
 
 	directory := flag.Arg(0)
@@ -104,6 +105,13 @@ func main() {
 		err := CreateReadMe(ctx, directory, aiClient, o)
 		if err != nil {
 			slog.Error("Error creating readme", "err", err)
+			os.Exit(1)
+		}
+	}
+	if o.reviewPR {
+		err := ReviewPullRequests(ctx, directory, aiClient, o)
+		if err != nil {
+			slog.Error("Error reviewing pull requests", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -280,5 +288,11 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 	if err != nil {
 		return fmt.Errorf("failed to walk directories: %w", err)
 	}
+	return nil
+}
+
+func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
+	// Implement the logic to compare the diff between the current branch and the default branch
+	// Use the ReviewPrompt to prompt the AI, and the ai_knowledge.yaml from the changed directory to provide context.
 	return nil
 }
