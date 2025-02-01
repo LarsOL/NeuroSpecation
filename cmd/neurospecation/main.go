@@ -290,8 +290,12 @@ func writeKnowledgeBase(dir, ans string, dryRun bool) error {
 		slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
 		return nil
 	}
-	ans = strings.TrimPrefix(ans, "```yaml\n")
-
+	if strings.Count(ans, "```") < 2 {
+		slog.Error("expected a code block as answer", "dir", dir, "ans", ans)
+		return nil
+	}
+	// Extract only yaml code block
+	_, ans, _ = strings.Cut(ans, "```yaml\n")
 	ans, _, _ = strings.Cut(ans, "```")
 	f, err := os.Create(ymlPath)
 	if err != nil {
