@@ -163,7 +163,7 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 	var ans string
 	if !options.dryRun {
 		var err error
-		ans, err = aiClient.Prompt(context.TODO(), aihelpers.PromptRequest{
+		ans, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
 			Prompt: prompt,
 		})
 		if err != nil {
@@ -185,7 +185,7 @@ func CreateReadMe(ctx context.Context, dir string, aiClient *aihelpers.AIClient,
 		}
 	}
 
-	ymlPath := filepath.Join(dir, "AI_README.md")
+	ymlPath := filepath.Join(dir, "ai_README.md")
 	if options.dryRun {
 		slog.Debug("skipping AI prompt, would have written file to:", "path", ymlPath)
 		return nil
@@ -258,7 +258,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		var ans string
 		if !options.dryRun {
 			var err error
-			ans, err = aiClient.Prompt(context.TODO(), aihelpers.PromptRequest{
+			ans, err = aiClient.Prompt(ctx, aihelpers.PromptRequest{
 				Prompt: prompt,
 			})
 			if err != nil {
@@ -378,7 +378,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
-	reviewFilePath := filepath.Join(dir, "AI-Review.md")
+	reviewFilePath := filepath.Join(dir, "ai_Review.md")
 	if options.dryRun {
 		slog.Debug("skipping AI review, would have written file to:", "path", reviewFilePath)
 		return nil
