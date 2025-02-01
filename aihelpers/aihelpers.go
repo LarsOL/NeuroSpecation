@@ -84,7 +84,5 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 }
 
 func (client *AIClient) promptLocalLLM(req PromptRequest) (string, error) {
-	//local LLM integration using Ollama ai!
-	//
 	return "Local LLM response", nil
 }
