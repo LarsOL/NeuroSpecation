@@ -224,6 +224,11 @@ func writeReadMe(dir, ans string, dryRun bool) error {
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	err := dirhelper.WalkDirectories(dir, func(dir string, files []dirhelper.FileContent, subdirs []string) error {
+		if len(files) == 0 {
+			slog.Debug("Skipping directory with no valid files", "dir", dir)
+			return nil
+		}
+
 		prompt := createKnowledgeBasePrompt(dir, files, subdirs)
 		if options.logPrompt {
 			if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
