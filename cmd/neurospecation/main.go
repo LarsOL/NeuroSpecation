@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
@@ -63,7 +64,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	ctx := context.Background()
 	o := &Options{
 		dryRun:          *dryRun,
 		debug:           *debug,
@@ -92,6 +92,9 @@ func main() {
 	}))
 	slog.SetDefault(l)
 
+	ctx := context.Background()
+	ctx = setLoggerToCtx(ctx, l)
+
 	if o.dryRun {
 		slog.Info("Dry-run mode enabled")
 	} else {
@@ -117,6 +120,7 @@ func main() {
 			slog.Error("Error updating knowledge base", "err", err)
 			os.Exit(1)
 		}
+		slog.Info("finished updating all knowledge base files")
 	}
 	if o.createReadme {
 		slog.Info("Creating AI README")
@@ -125,6 +129,7 @@ func main() {
 			slog.Error("Error creating readme", "err", err)
 			os.Exit(1)
 		}
+		slog.Info("finished creating readme")
 	}
 	if o.reviewPR {
 		slog.Info("Creating PR review")
@@ -133,6 +138,7 @@ func main() {
 			slog.Error("Error reviewing pull requests", "err", err)
 			os.Exit(1)
 		}
+		slog.Info("finished creating PR review")
 	}
 }
 
@@ -183,7 +189,7 @@ func promptAI(ctx context.Context, aiClient *aihelpers.AIClient, prompt string, 
 		slog.Debug("Dry-run mode, skipping AI prompt")
 		return "", nil
 	}
-	slog.Debug("Prompting AI", "prompt", prompt)
+	loggerFromCtx(ctx).Debug("Prompting AI", "prompt", prompt)
 	ans, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
 	if err != nil {
 		return "", fmt.Errorf("failed to prompt AI: %w", err)
@@ -236,29 +242,44 @@ func writeReadMe(dir, ans string, dryRun bool) error {
 }
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
+	var wg sync.WaitGroup
 	err := dirhelper.WalkDirectories(dir, func(dir string, files []dirhelper.FileContent, subdirs []string) error {
+		l := loggerFromCtx(ctx)
+		l.With("dir", dir)
+		ctx = setLoggerToCtx(ctx, l)
 		if len(files) == 0 {
 			slog.Debug("Skipping directory with no valid files", "dir", dir)
 			return nil
 		}
-
-		prompt := createKnowledgeBasePrompt(dir, files, subdirs)
-		if options.logPrompt {
-			if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
-				return err
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			prompt := createKnowledgeBasePrompt(dir, files, subdirs)
+			if options.logPrompt {
+				if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
+					slog.Error("error logging prompt", "dir", dir, "err", err)
+				}
 			}
-		}
 
-		ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
-		if err != nil {
-			return err
-		}
+			ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+			if err != nil {
+				slog.Error("error prompting AI", "dir", dir, "err", err)
+				return
+			}
 
-		return writeKnowledgeBase(dir, ans, options.dryRun)
+			err = writeKnowledgeBase(dir, ans, options.dryRun)
+			if err != nil {
+				slog.Error("error writing knowledge base file", "dir", dir, "err", err)
+				return
+			}
+		}()
+		return nil
 	}, nil)
+	wg.Wait()
 	if err != nil {
 		return fmt.Errorf("failed to walk directories: %w", err)
 	}
+	slog.Info("finished updating all knowledge base files")
 	return nil
 }
 
@@ -442,4 +463,14 @@ func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
 		return err
 	}
 	return nil
+}
+
+const Loggerkey = "logger"
+
+func setLoggerToCtx(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, Loggerkey, logger)
+}
+
+func loggerFromCtx(ctx context.Context) *slog.Logger {
+	return ctx.Value(Loggerkey).(*slog.Logger)
 }
