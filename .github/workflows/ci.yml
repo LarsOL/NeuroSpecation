@@ -51,7 +51,7 @@ jobs:
         run: |
           docker run \
             --rm ${{ env.TEST_TAG }} \
-            /neurospecation -h
+            -h
 
   test-action:
     name: GitHub Actions Test

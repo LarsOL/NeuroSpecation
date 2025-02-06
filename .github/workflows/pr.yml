@@ -24,3 +24,6 @@ jobs:
         uses: ./
         with:
           command_args: "-r"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
