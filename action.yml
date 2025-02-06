@@ -7,6 +7,10 @@ inputs:
     description: 'Command line arguments'
     required: false
     default: '-r'
+  token:
+    description: 'GH token, must have write access to add comment for review'
+    required: false
+    default: ${{ github.token }}
 runs:
   using: docker
   image: Dockerfile
