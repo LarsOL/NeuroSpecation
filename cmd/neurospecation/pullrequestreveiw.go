@@ -60,11 +60,11 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		if err != nil {
 			return err
 		}
-	}
-
-	err = writeReviewToPR(ctx, reviewOutput)
-	if err != nil {
-		return err
+	} else {
+		err = writeReviewToPR(ctx, reviewOutput)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
