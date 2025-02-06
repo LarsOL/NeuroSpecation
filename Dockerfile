@@ -4,7 +4,7 @@ RUN apk update && apk add --no-cache git tzdata
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
-COPY *.go ./
+COPY . ./
 RUN ls
 RUN CGO_ENABLED=0 go build -v -o neurospecation ./cmd/neurospecation
 
