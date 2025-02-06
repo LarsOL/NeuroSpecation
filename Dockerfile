@@ -5,7 +5,7 @@ WORKDIR /build
 COPY . .
 COPY go.mod go.sum ./
 RUN go mod download
-RUN CGO_ENABLED=0 go build -ldflags -o neurospecation ./cmd/neurospecation
+RUN CGO_ENABLED=0 go build -v -ldflags -o neurospecation ./cmd/neurospecation
 
 FROM scratch
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
