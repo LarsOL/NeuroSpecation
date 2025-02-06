@@ -1,6 +1,24 @@
-# AIHelpers Repository
+# NeuroSpectation 
 
 This repository contains components designed for enhancing interactions with OpenAI's API and supporting AI-based operations through command-line tools. Below is a summary of the available directories and their functionalities.
+
+## Usage
+```yaml
+name: Example Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  example:
+    name: neurospecation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Example
+        id: example
+        uses: actions/neurospecation@main
+```
 
 ## Directories Overview
 
