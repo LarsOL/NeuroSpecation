@@ -1,4 +1,4 @@
-FROM docker.io/golang AS build
+FROM docker.io/golang:alpine AS build
 
 RUN apk update && apk add --no-cache git tzdata
 WORKDIR /build
