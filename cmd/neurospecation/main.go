@@ -29,6 +29,7 @@ type Options struct {
 	createReadme        bool
 	reviewPR            bool
 	concurrencyRPMLimit int
+	targetBranch        string
 }
 
 var (
@@ -46,6 +47,7 @@ func main() {
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
 	reviewPR := flag.Bool("r", false, "Review pull requests")
 	concurrencyLimit := flag.Int("cl", 500, "Concurrency limit for updating knowledge base")
+	targetBranch := flag.String("tb", "", "Target branch for pull request reviews")
 	help := flag.Bool("h", false, "Show help")
 	ver := flag.Bool("v", false, "Show version")
 
@@ -76,6 +78,7 @@ func main() {
 		createReadme:        *createReadme,
 		reviewPR:            *reviewPR,
 		concurrencyRPMLimit: *concurrencyLimit,
+		targetBranch:        *targetBranch,
 	}
 
 	directory := flag.Arg(0)
@@ -370,11 +373,16 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
-	if currentBranch == defaultBranchName {
-		return fmt.Errorf("current branch %s, same as default branch %s", currentBranch, defaultBranchName)
+	targetBranch := options.targetBranch
+	if targetBranch == "" {
+		targetBranch = defaultBranchName
 	}
 
-	diffOutput, err := getGitDiff(currentBranch, defaultBranchName)
+	if currentBranch == targetBranch {
+		return fmt.Errorf("current branch %s, same as target branch %s", currentBranch, targetBranch)
+	}
+
+	diffOutput, err := getGitDiff(currentBranch, targetBranch)
 	if err != nil {
 		return err
 	}
