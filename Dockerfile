@@ -7,9 +7,8 @@ RUN go mod download
 COPY . ./
 RUN CGO_ENABLED=0 go build -o neurospecation ./cmd/neurospecation
 
-FROM scratch
-COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+FROM alpine
+RUN apk update && apk add --no-cache git # Need git for PR review diffs
 COPY --from=build /build/neurospecation /neurospecation
 ENTRYPOINT ["/neurospecation"]
 CMD []
