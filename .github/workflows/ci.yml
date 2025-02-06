@@ -50,7 +50,8 @@ jobs:
         id: run
         run: |
           docker run \
-            --rm ${{ env.TEST_TAG }}
+            --rm ${{ env.TEST_TAG }} \
+            -h
 
   test-action:
     name: GitHub Actions Test
