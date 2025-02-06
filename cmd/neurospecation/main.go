@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
@@ -20,13 +21,14 @@ const ReadmePrompt = "Create a README file for this directory. This should conta
 const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and provide valuable feedback. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
 
 type Options struct {
-	dryRun          bool
-	debug           bool
-	logPrompt       bool
-	updateKnowledge bool
-	model           string
-	createReadme    bool
-	reviewPR        bool
+	dryRun              bool
+	debug               bool
+	logPrompt           bool
+	updateKnowledge     bool
+	model               string
+	createReadme        bool
+	reviewPR            bool
+	concurrencyRPMLimit int
 }
 
 var (
@@ -43,6 +45,7 @@ func main() {
 	model := flag.String("m", "gpt-4o", "The model to use for AI requests")
 	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
 	reviewPR := flag.Bool("r", false, "Review pull requests")
+	concurrencyLimit := flag.Int("cl", 500, "Concurrency limit for updating knowledge base")
 	help := flag.Bool("h", false, "Show help")
 	ver := flag.Bool("v", false, "Show version")
 
@@ -65,13 +68,14 @@ func main() {
 	}
 
 	o := &Options{
-		dryRun:          *dryRun,
-		debug:           *debug,
-		logPrompt:       *logPrompt,
-		updateKnowledge: *updateKnowledge,
-		model:           *model,
-		createReadme:    *createReadme,
-		reviewPR:        *reviewPR,
+		dryRun:              *dryRun,
+		debug:               *debug,
+		logPrompt:           *logPrompt,
+		updateKnowledge:     *updateKnowledge,
+		model:               *model,
+		createReadme:        *createReadme,
+		reviewPR:            *reviewPR,
+		concurrencyRPMLimit: *concurrencyLimit,
 	}
 
 	directory := flag.Arg(0)
@@ -242,6 +246,20 @@ func writeReadMe(dir, ans string, dryRun bool) error {
 }
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
+	// Rate limit to concurrencyRPMLimit requests per minute
+	throttle := make(chan time.Time, options.concurrencyRPMLimit)
+	go func() {
+		ticker := time.NewTicker(time.Minute / time.Duration(options.concurrencyRPMLimit))
+		defer ticker.Stop()
+		for t := range ticker.C {
+			select {
+			case throttle <- t:
+			case <-ctx.Done():
+				return // exit goroutine when surrounding function returns
+			}
+		}
+	}()
+
 	var wg sync.WaitGroup
 	err := dirhelper.WalkDirectories(dir, func(dir string, files []dirhelper.FileContent, subdirs []string) error {
 		l := loggerFromCtx(ctx)
@@ -260,7 +278,7 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 					slog.Error("error logging prompt", "dir", dir, "err", err)
 				}
 			}
-
+			<-throttle
 			ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
 			if err != nil {
 				slog.Error("error prompting AI", "dir", dir, "err", err)
