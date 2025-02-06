@@ -16,23 +16,22 @@ import (
 const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and provide valuable feedback. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	currentBranch, defaultBranchName, err := getGitBranches()
-	if err != nil {
-		return err
-	}
-
 	targetBranch := options.targetBranch
 	if targetBranch == "" {
+		defaultBranchName, err := getDefaultBranch()
+		if err != nil {
+			return err
+		}
 		targetBranch = defaultBranchName
 	}
 
-	if currentBranch == targetBranch {
-		return fmt.Errorf("current branch %s, same as target branch %s", currentBranch, targetBranch)
-	}
-
-	diffOutput, err := getGitDiff(currentBranch, targetBranch)
+	diffOutput, err := getGitDiff(targetBranch)
 	if err != nil {
 		return err
+	}
+
+	if diffOutput == "" {
+		return fmt.Errorf("no diff between current commit and %s", targetBranch)
 	}
 
 	gitRoot, err := getGitRoot()
@@ -104,29 +103,22 @@ func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 	return nil
 }
 
-func getGitBranches() (string, string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get current branch: %w", err)
-	}
-	currentBranch := strings.TrimSpace(string(output))
-
-	cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
+func getDefaultBranch() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
 	defaultBranch, err := cmd.Output()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get default branch: %w", err)
+		return "", fmt.Errorf("failed to get default branch: %w", err)
 	}
 	defaultBranchName := strings.TrimSpace(string(defaultBranch))
 	defaultBranchName = strings.TrimPrefix(defaultBranchName, "origin/")
-	return currentBranch, defaultBranchName, nil
+	return defaultBranchName, nil
 }
 
-func getGitDiff(currentBranch, defaultBranchName string) (string, error) {
-	cmd := exec.Command("git", "diff", defaultBranchName, currentBranch)
+func getGitDiff(defaultBranchName string) (string, error) {
+	cmd := exec.Command("git", "diff", defaultBranchName)
 	diffOutput, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get diff between currentbranch %s and default branch %s: %w", currentBranch, defaultBranchName, err)
+		return "", fmt.Errorf("failed to get diff between current commit and default branch %s: %w", defaultBranchName, err)
 	}
 	return string(diffOutput), nil
 }
