@@ -2,10 +2,10 @@ FROM docker.io/golang:alpine AS build
 
 RUN apk update && apk add --no-cache git tzdata
 WORKDIR /build
-COPY . .
 COPY go.mod go.sum ./
 RUN go mod download
-RUN CGO_ENABLED=0 go build -v -ldflags -o neurospecation ./cmd/neurospecation
+COPY *.go ./
+RUN CGO_ENABLED=0 go build -o neurospecation ./cmd/neurospecation
 
 FROM scratch
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
