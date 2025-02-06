@@ -11,4 +11,4 @@ FROM alpine
 RUN apk update && apk add --no-cache git # Need git for PR review diffs
 COPY --from=build /build/neurospecation /neurospecation
 ENTRYPOINT ["/neurospecation"]
-CMD []
+CMD ["-h"]

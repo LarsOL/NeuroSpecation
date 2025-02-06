@@ -66,4 +66,4 @@ jobs:
         id: test-action
         uses: ./
         with:
-          command_args: '-h'
+          command_args: '["-h"]'

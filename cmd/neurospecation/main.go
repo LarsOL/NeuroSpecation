@@ -42,7 +42,7 @@ func main() {
 	ver := flag.Bool("v", false, "Show version")
 
 	flag.Usage = func() {
-		slog.Info("Usage: repotraversal <directory> [flags]")
+		slog.Info("Usage: neurospecation <directory> [flags]")
 		slog.Info("Flags:")
 		flag.PrintDefaults()
 		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)

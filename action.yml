@@ -6,7 +6,7 @@ inputs:
   command_args:
     description: 'Command line arguments'
     required: false
-    default: '-r'
+    default: '["-r"]'
   token:
     description: 'GH token, must have write access to add comment for review'
     required: false
@@ -14,5 +14,4 @@ inputs:
 runs:
   using: docker
   image: Dockerfile
-  args:
-    - ${{ inputs.command_args }}
+  args: ${{ fromJson(inputs.command_args) }}
