@@ -65,3 +65,5 @@ jobs:
       - name: Test Local Action
         id: test-action
         uses: ./
+        with:
+          command_args: '-h'

@@ -2,6 +2,11 @@ name: Neurospecation
 description: AI Review Bot
 author: Lars Lawoko
 
+inputs:
+  command_args:
+    description: 'Command line arguments'
+    required: false
+    default: '-r'
 runs:
   using: docker
   image: Dockerfile

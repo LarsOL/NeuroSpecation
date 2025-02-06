@@ -11,4 +11,5 @@ FROM scratch
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /build/neurospecation /neurospecation
-CMD [ "/neurospecation" ]
+ENTRYPOINT [ "/neurospecation" ]
+CMD []

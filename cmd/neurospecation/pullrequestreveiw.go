@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/LarsOL/NeuroSpecation/aihelpers"
+	"github.com/google/go-github/v69/github"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -54,7 +56,52 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
-	return writeReviewFile(dir, reviewOutput, options.dryRun)
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		err := writeReviewFile(dir, reviewOutput, options.dryRun)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = writeReviewToPR(ctx, reviewOutput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeReviewToPR(ctx context.Context, reviewOutput string) error {
+	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+
+	// Assuming the environment variables GITHUB_REPOSITORY and GITHUB_PR_NUMBER are set in the GitHub Action context
+	repo := os.Getenv("GITHUB_REPOSITORY")
+	prNumber := os.Getenv("GITHUB_PR_NUMBER")
+
+	if repo == "" {
+		return fmt.Errorf("GITHUB_REPOSITORY environment variable is not set")
+	}
+	if prNumber == "" {
+		return fmt.Errorf("GITHUB_PR_NUMBER environment variable is not set")
+	}
+
+	ownerRepo := strings.Split(repo, "/")
+	if len(ownerRepo) != 2 {
+		return fmt.Errorf("invalid GITHUB_REPOSITORY format, got %s", repo)
+	}
+
+	owner, repoName := ownerRepo[0], ownerRepo[1]
+	prNum, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return fmt.Errorf("invalid GITHUB_PR_NUMBER format, got %s: err: %w", prNumber, err)
+	}
+
+	comment := &github.IssueComment{Body: &reviewOutput}
+	_, _, err = client.Issues.CreateComment(ctx, owner, repoName, prNum, comment)
+	if err != nil {
+		return fmt.Errorf("failed to create comment on PR, err: %w", err)
+	}
+	return nil
 }
 
 func getGitBranches() (string, string, error) {
