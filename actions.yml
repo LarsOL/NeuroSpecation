@@ -1,0 +1,7 @@
+name: Neurospecation
+description: AI Review Bot
+author: Lars Lawoko
+
+runs:
+  using: docker
+  image: Dockerfile

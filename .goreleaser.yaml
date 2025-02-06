@@ -37,6 +37,11 @@ archives:
       - goos: windows
         formats: ['binary']
 
+dockers:
+  - image_templates:
+      - test/neurospecation
+    skip_push: true
+
 changelog:
   sort: asc
   filters:
