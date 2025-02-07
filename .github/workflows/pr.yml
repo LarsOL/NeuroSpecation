@@ -43,7 +43,7 @@ jobs:
 
       - name: Test Local Action
         id: test-action
-        uses: ./
+        uses: ./ # TODO: once published to the store, use the proper version
         with:
           debug: "-d"
           review: "-r"
