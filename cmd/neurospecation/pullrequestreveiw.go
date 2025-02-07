@@ -37,6 +37,8 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
+	debug(dir)
+
 	if !isInsideGitRepo(dir) {
 		return fmt.Errorf("must be run from within a git repo")
 	}
@@ -132,8 +134,6 @@ func getDefaultBranch(dir string) (string, error) {
 }
 
 func isInsideGitRepo(dir string) bool {
-	debug(dir)
-
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	cmd.Dir = dir
 	output, err := cmd.Output()
@@ -158,7 +158,7 @@ func getGitDiff(dir string, target string) (string, error) {
 }
 
 func updateGitWorktree(dir string) error {
-	cmd := exec.Command("git", "config", "--local", "core.worktree", dir)
+	cmd := exec.Command("git", "--git-dir="+dir+"/.git", "--work-tree="+dir, "config", "core.worktree", dir)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
