@@ -1,9 +1,9 @@
 name: PR Review
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
-      - main  # Adjust if needed, or remove to run on all PRs
+      - main
 
 permissions:
   contents: read
