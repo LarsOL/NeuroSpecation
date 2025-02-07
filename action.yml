@@ -2,6 +2,26 @@ name: Neurospecation
 description: AI Review Bot
 author: Lars Lawoko
 
+inputs:
+  review:
+    description: 'Add -r to run a Pull request review'
+    required: false
+  debug:
+    description: 'Add -d to debug'
+    required: false
+  token:
+    description: 'GH token, must have write access to add comment for review'
+    required: false
+    default: ${{ github.token }}
+  directory:
+    description: 'Directory to run in'
+    required: false
+    default: ""
 runs:
   using: docker
   image: Dockerfile
+  args:
+    - "-dir"
+    - "${{ inputs.directory }}"
+    - "${{ inputs.debug }}"
+    - "${{ inputs.review }}"
