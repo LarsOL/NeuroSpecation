@@ -134,6 +134,7 @@ func getGitDiff(target string) (string, error) {
 	}
 
 	for _, cmdInfo := range debugCommands {
+		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
