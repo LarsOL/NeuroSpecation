@@ -19,3 +19,4 @@ runs:
   args:
     - ${{ inputs.review }}
     - ${{ inputs.debug }}
+  working-directory: ${{ github.workspace }}

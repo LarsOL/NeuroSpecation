@@ -21,6 +21,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug Git Environment
+        run: |
+          echo "Checking if we are inside a Git repo..."
+          pwd
+          ls -la
+          git rev-parse --is-inside-work-tree || echo "Not a git repo"
+          git status || echo "Git status failed"
+          git branch -a || echo "git branch failed"
+          git remote -v || echo "git remote -v failed"
+          git diff main || echo "git diff main failed"
+          git diff main...HEAD || echo "git diff main...HEAD failed"
+        shell: bash
+
       - name: Test Local Action
         id: test-action
         uses: ./
