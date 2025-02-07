@@ -158,6 +158,7 @@ func debug(dir string) {
 		args []string
 	}{
 		{"ls", []string{"."}},
+		{"env", []string{""}},
 		{"ls", []string{"-la", "/github/workspace/.git"}},
 		{"ls", []string{"-la", "./.git"}},
 		{"ls", []string{"-la"}},
