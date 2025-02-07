@@ -22,7 +22,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		targetBranch = os.Getenv("GITHUB_BASE_REF")
 		if targetBranch == "" {
 			slog.Debug("no target branch github env set (GITHUB_BASE_REF)")
-			defaultBranchName, err := getDefaultBranch()
+			defaultBranchName, err := getDefaultBranch(dir)
 			if err != nil {
 				return err
 			}
@@ -32,7 +32,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
-	diffOutput, err := getGitDiff(targetBranch)
+	diffOutput, err := getGitDiff(dir, targetBranch)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return fmt.Errorf("no diff between current commit and %s", targetBranch)
 	}
 
-	gitRoot, err := getGitRoot()
+	gitRoot, err := getGitRoot(dir)
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,9 @@ func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 	return nil
 }
 
-func getDefaultBranch() (string, error) {
+func getDefaultBranch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
+	cmd.Dir = dir
 	defaultBranch, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get default branch: %w", err)
@@ -121,12 +122,14 @@ func getDefaultBranch() (string, error) {
 	return defaultBranchName, nil
 }
 
-func getGitDiff(target string) (string, error) {
+func getGitDiff(dir string, target string) (string, error) {
 	// Debugging commands
 	debugCommands := []struct {
 		name string
 		args []string
 	}{
+		{"ls", []string{""}},
+		{"pwd", []string{""}},
 		{"git", []string{"status"}},
 		{"git", []string{"branch", "-a"}},
 		{"git", []string{"remote", "-v"}},
@@ -136,6 +139,7 @@ func getGitDiff(target string) (string, error) {
 	for _, cmdInfo := range debugCommands {
 		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
+		cmd.Dir = dir
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
@@ -145,6 +149,7 @@ func getGitDiff(target string) (string, error) {
 	}
 
 	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
+	cmd.Dir = dir
 	diffOutput, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get diff between current commit and target: %s err: %w", target, err)
@@ -152,8 +157,9 @@ func getGitDiff(target string) (string, error) {
 	return string(diffOutput), nil
 }
 
-func getGitRoot() (string, error) {
+func getGitRoot(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = dir
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get git root directory: %w", err)
