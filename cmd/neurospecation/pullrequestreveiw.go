@@ -32,12 +32,9 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
-	err := updateGitWorktree(dir)
-	if err != nil {
-		return err
+	if options.debug {
+		debug(dir)
 	}
-
-	debug(dir)
 
 	if !isInsideGitRepo(dir) {
 		return fmt.Errorf("must be run from within a git repo")
@@ -121,9 +118,20 @@ func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 	return nil
 }
 
-func getDefaultBranch(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "origin/HEAD")
+func runGitCommand(dir string, args ...string) *exec.Cmd {
+	// Create the command and set its working directory.
+	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	// Explicitly set both GIT_DIR and GIT_WORK_TREE.
+	cmd.Env = append(os.Environ(),
+		"GIT_DIR="+dir+"/.git",
+		"GIT_WORK_TREE="+dir,
+	)
+	return cmd
+}
+
+func getDefaultBranch(dir string) (string, error) {
+	cmd := runGitCommand(dir, "rev-parse", "--abbrev-ref", "origin/HEAD")
 	defaultBranch, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get default branch: %w", err)
@@ -134,8 +142,7 @@ func getDefaultBranch(dir string) (string, error) {
 }
 
 func isInsideGitRepo(dir string) bool {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = dir
+	cmd := runGitCommand(dir, "rev-parse", "--show-toplevel")
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Printf("Not a Git repo: %v, output: %s\n", err, output)
@@ -148,23 +155,12 @@ func isInsideGitRepo(dir string) bool {
 }
 
 func getGitDiff(dir string, target string) (string, error) {
-	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
-	cmd.Dir = dir
+	cmd := runGitCommand(dir, "diff", "origin/"+target+"...HEAD")
 	diffOutput, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to get diff between current commit and target: %s err: %w", target, err)
 	}
 	return string(diffOutput), nil
-}
-
-func updateGitWorktree(dir string) error {
-	cmd := exec.Command("git", "--git-dir="+dir+"/.git", "--work-tree="+dir, "config", "core.worktree", dir)
-	cmd.Dir = dir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to update core.worktree: %w. Output: %s", err, string(output))
-	}
-	return nil
 }
 
 func debug(dir string) {
@@ -197,6 +193,10 @@ func debug(dir string) {
 		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
 		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_DIR="+dir+"/.git",
+			"GIT_WORK_TREE="+dir,
+		)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
@@ -207,7 +207,7 @@ func debug(dir string) {
 }
 
 func getGitRoot(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd := runGitCommand(dir, "rev-parse", "--show-toplevel")
 	cmd.Dir = dir
 	output, err := cmd.Output()
 	if err != nil {
