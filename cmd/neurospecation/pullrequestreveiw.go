@@ -88,7 +88,6 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
-	// Assuming the environment variables GITHUB_REPOSITORY and GITHUB_PR_NUMBER are set in the GitHub Action context
 	repo := os.Getenv("GITHUB_REPOSITORY")
 	prNumber := os.Getenv("GITHUB_PR_NUMBER")
 
