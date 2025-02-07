@@ -181,6 +181,7 @@ func debug(dir string) {
 		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
 		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_WORK_TREE="+dir)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
