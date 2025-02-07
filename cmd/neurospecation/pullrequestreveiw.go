@@ -168,6 +168,7 @@ func debug(dir string) {
 		{"pwd", []string{""}},
 		{"git", []string{"version"}},
 		{"git", []string{"status"}},
+		{"git", []string{"-C", ".", "status"}},
 		{"git", []string{"-C", "..", "status"}},
 		{"git", []string{"-C", "/github/workspace", "status"}},
 		{"git", []string{"-C", "../..", "status"}},
@@ -181,7 +182,9 @@ func debug(dir string) {
 		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GIT_WORK_TREE="+dir)
+		cmd.Env = append(os.Environ(),
+			"GIT_WORK_TREE="+dir,
+			"GIT_DIR="+dir+"/.git")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
