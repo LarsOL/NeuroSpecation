@@ -32,6 +32,10 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
+	if !isInsideGitRepo(dir) {
+		return fmt.Errorf("must be run from within a git repo")
+	}
+
 	diffOutput, err := getGitDiff(dir, targetBranch)
 	if err != nil {
 		return err
@@ -122,9 +126,23 @@ func getDefaultBranch(dir string) (string, error) {
 	return defaultBranchName, nil
 }
 
-func getGitDiff(dir string, target string) (string, error) {
+func isInsideGitRepo(dir string) bool {
 	debug(dir)
 
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Not a Git repo: %v\n", err)
+		return false
+	}
+
+	gitRoot := strings.TrimSpace(string(output))
+	slog.Debug("Git root directory: ", "dir", dir, "gitRoot", gitRoot)
+	return true
+}
+
+func getGitDiff(dir string, target string) (string, error) {
 	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
 	cmd.Dir = dir
 	diffOutput, err := cmd.Output()

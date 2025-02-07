@@ -21,6 +21,7 @@ runs:
   using: docker
   image: Dockerfile
   args:
-    - ${{ inputs.directory }}
-    - ${{ inputs.review }}
-    - ${{ inputs.debug }}
+    - "-dir"
+    - "${{ inputs.directory }}"
+    - "${{ inputs.debug }}"
+    - "${{ inputs.review }}"

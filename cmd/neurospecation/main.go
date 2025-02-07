@@ -38,6 +38,7 @@ func main() {
 	reviewPR := flag.Bool("r", false, "Review pull requests")
 	concurrencyLimit := flag.Int("cl", 500, "Concurrency limit for updating knowledge base")
 	targetBranch := flag.String("tb", "", "Target branch for pull request reviews")
+	dir := flag.String("dir", "", "Directory to run on")
 	help := flag.Bool("h", false, "Show help")
 	ver := flag.Bool("v", false, "Show version")
 
@@ -70,11 +71,6 @@ func main() {
 		concurrencyRPMLimit: *concurrencyLimit,
 		targetBranch:        *targetBranch,
 	}
-	if o.createReadme == false && o.reviewPR == false && o.updateKnowledge == false {
-		slog.Info("please select one or more of the modes: Update Knowledgebase, Create readme, Review PR")
-		flag.Usage()
-		os.Exit(0)
-	}
 
 	lvl := new(slog.LevelVar)
 	if o.debug {
@@ -92,7 +88,8 @@ func main() {
 	ctx := context.Background()
 	ctx = setLoggerToCtx(ctx, l)
 
-	directory := flag.Arg(0)
+	slog.Info("Command line arguments", "args", os.Args)
+	directory := *dir
 	if directory == "" {
 		slog.Debug("directory command line argument not set")
 		directory = os.Getenv("GITHUB_WORKSPACE")
@@ -106,13 +103,17 @@ func main() {
 		slog.Debug("using directory from cmd argument", "dir", directory)
 	}
 
+	if o.createReadme == false && o.reviewPR == false && o.updateKnowledge == false {
+		slog.Info("please select one or more of the modes: Update Knowledgebase, Create readme, Review PR")
+		flag.Usage()
+		os.Exit(0)
+	}
+
 	if o.dryRun {
 		slog.Info("Dry-run mode enabled")
 	} else {
 		slog.Debug("Dry-run mode disabled")
 	}
-
-	slog.Debug("Command line arguments", "args", os.Args)
 
 	var aiClient *aihelpers.AIClient
 	if !o.dryRun {
