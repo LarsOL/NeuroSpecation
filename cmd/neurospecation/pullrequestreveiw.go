@@ -167,21 +167,10 @@ func debug(dir string) {
 		name string
 		args []string
 	}{
-		{"ls", []string{"."}},
-		{"env", []string{""}},
-		{"ls", []string{"-la", "/github/workspace/.git"}},
-		{"ls", []string{"-la", "./.git"}},
-		{"ls", []string{"-la"}},
-		{"ls", []string{"~"}},
-		{"ls", []string{".."}},
-		{"ls", []string{"../.."}},
 		{"pwd", []string{""}},
+		{"ls", []string{"-la"}},
 		{"git", []string{"version"}},
 		{"git", []string{"status"}},
-		{"git", []string{"-C", ".", "status"}},
-		{"git", []string{"-C", "..", "status"}},
-		{"git", []string{"-C", "/github/workspace", "status"}},
-		{"git", []string{"-C", "../..", "status"}},
 		{"git", []string{"rev-parse", "--show-toplevel"}},
 		{"git", []string{"branch", "-a"}},
 		{"git", []string{"remote", "-v"}},
