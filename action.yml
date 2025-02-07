@@ -13,9 +13,14 @@ inputs:
     description: 'GH token, must have write access to add comment for review'
     required: false
     default: ${{ github.token }}
+  directory:
+    description: 'Directory to run in'
+    required: false
+    default: ${{ github.workspace }}
 runs:
   using: docker
   image: Dockerfile
   args:
+    - ${{ inputs.directory }}
     - ${{ inputs.review }}
     - ${{ inputs.debug }}

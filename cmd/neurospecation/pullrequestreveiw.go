@@ -123,7 +123,18 @@ func getDefaultBranch(dir string) (string, error) {
 }
 
 func getGitDiff(dir string, target string) (string, error) {
-	// Debugging commands
+	debug(dir)
+
+	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
+	cmd.Dir = dir
+	diffOutput, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get diff between current commit and target: %s err: %w", target, err)
+	}
+	return string(diffOutput), nil
+}
+
+func debug(dir string) {
 	debugCommands := []struct {
 		name string
 		args []string
@@ -147,14 +158,6 @@ func getGitDiff(dir string, target string) (string, error) {
 			slog.Debug(fmt.Sprintf("output of %s %v: %s", cmdInfo.name, cmdInfo.args, string(output)))
 		}
 	}
-
-	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
-	cmd.Dir = dir
-	diffOutput, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to get diff between current commit and target: %s err: %w", target, err)
-	}
-	return string(diffOutput), nil
 }
 
 func getGitRoot(dir string) (string, error) {
