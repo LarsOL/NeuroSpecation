@@ -3,10 +3,12 @@ description: AI Review Bot
 author: Lars Lawoko
 
 inputs:
-  command_args:
-    description: 'Command line arguments'
+  review:
+    description: 'Add -r to run a Pull request review'
     required: false
-    default: '["-r"]'
+  debug:
+    description: 'Add -d to debug'
+    required: false
   token:
     description: 'GH token, must have write access to add comment for review'
     required: false
@@ -14,4 +16,5 @@ inputs:
 runs:
   using: docker
   image: Dockerfile
-  args: ${{ fromJson(inputs.command_args) }}
+  args:
+    - ${{ inputs.review }}
