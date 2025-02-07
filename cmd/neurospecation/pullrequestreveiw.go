@@ -18,11 +18,14 @@ const ReviewPrompt = "You are a skilled software engineer, review the given pull
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	targetBranch := options.targetBranch
 	if targetBranch == "" {
-		defaultBranchName, err := getDefaultBranch()
-		if err != nil {
-			return err
+		targetBranch = os.Getenv("GITHUB_BASE_REF")
+		if targetBranch == "" {
+			defaultBranchName, err := getDefaultBranch()
+			if err != nil {
+				return err
+			}
+			targetBranch = defaultBranchName
 		}
-		targetBranch = defaultBranchName
 	}
 
 	diffOutput, err := getGitDiff(targetBranch)
