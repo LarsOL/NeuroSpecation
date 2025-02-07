@@ -45,7 +45,7 @@ jobs:
         id: test-action
         uses: ./ # TODO: once published to the store, use the proper version
         with:
-          debug: "-d"
+          review: "-r"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
