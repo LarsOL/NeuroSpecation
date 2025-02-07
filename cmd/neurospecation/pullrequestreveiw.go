@@ -117,8 +117,8 @@ func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options)
 		slog.Debug("Adding comment to this PR", "pr", pr)
 	}
 
-	comment := &github.PullRequestComment{Body: &reviewOutput}
-	_, resp, err := client.PullRequests.CreateComment(ctx, owner, repoName, prNum, comment)
+	comment := &github.IssueComment{Body: &reviewOutput}
+	_, resp, err := client.Issues.CreateComment(ctx, owner, repoName, prNum, comment)
 	if err != nil {
 		return fmt.Errorf("failed to create comment on PR, err: %w", err)
 	}
