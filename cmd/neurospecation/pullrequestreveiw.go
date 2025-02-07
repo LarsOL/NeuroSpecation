@@ -133,7 +133,7 @@ func isInsideGitRepo(dir string) bool {
 	cmd.Dir = dir
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("Not a Git repo: %v\n", err)
+		fmt.Printf("Not a Git repo: %v, output: %s\n", err, output)
 		return false
 	}
 
@@ -157,7 +157,7 @@ func debug(dir string) {
 		name string
 		args []string
 	}{
-		{"ls", []string{""}},
+		{"ls", []string{"."}},
 		{"ls", []string{"-la", "/github/workspace/.git"}},
 		{"ls", []string{"-la", "./.git"}},
 		{"ls", []string{"-la"}},
@@ -170,6 +170,7 @@ func debug(dir string) {
 		{"git", []string{"-C", "..", "status"}},
 		{"git", []string{"-C", "/github/workspace", "status"}},
 		{"git", []string{"-C", "../..", "status"}},
+		{"git", []string{"rev-parse", "--show-toplevel"}},
 		{"git", []string{"branch", "-a"}},
 		{"git", []string{"remote", "-v"}},
 		{"git", []string{"rev-parse", "--is-inside-work-tree"}},
