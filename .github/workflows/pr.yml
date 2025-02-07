@@ -3,7 +3,7 @@ name: PR Review
 on:
   pull_request:
     branches:
-      - main
+      - main  # Adjust if needed, or remove to run on all PRs
 
 permissions:
   contents: read
@@ -19,7 +19,14 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Ensures we have full history
+
+      - name: Fetch target branch
+        run: |
+          TARGET_BRANCH="${{ github.base_ref }}"  # Use the PR's base branch
+          echo "Fetching target branch: $TARGET_BRANCH"
+          git fetch origin $TARGET_BRANCH
+          git branch --track $TARGET_BRANCH origin/$TARGET_BRANCH || true
 
       - name: Debug Git Environment
         run: |
