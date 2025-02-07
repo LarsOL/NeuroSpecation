@@ -18,13 +18,17 @@ const ReviewPrompt = "You are a skilled software engineer, review the given pull
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
 	targetBranch := options.targetBranch
 	if targetBranch == "" {
+		slog.Debug("no target branch flag set")
 		targetBranch = os.Getenv("GITHUB_BASE_REF")
 		if targetBranch == "" {
+			slog.Debug("no target branch github env set (GITHUB_BASE_REF)")
 			defaultBranchName, err := getDefaultBranch()
 			if err != nil {
 				return err
 			}
 			targetBranch = defaultBranchName
+		} else {
+			slog.Debug("target branch github env set (GITHUB_BASE_REF)", "env", targetBranch)
 		}
 	}
 
