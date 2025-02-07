@@ -16,7 +16,7 @@ inputs:
   directory:
     description: 'Directory to run in'
     required: false
-    default: ${{ github.workspace }}
+    default: ""
 runs:
   using: docker
   image: Dockerfile
