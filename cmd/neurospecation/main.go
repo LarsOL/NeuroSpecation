@@ -76,11 +76,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	directory := flag.Arg(0)
-	if directory == "" {
-		directory = "."
-	}
-
 	lvl := new(slog.LevelVar)
 	if o.debug {
 		lvl.Set(slog.LevelDebug)
@@ -96,6 +91,20 @@ func main() {
 
 	ctx := context.Background()
 	ctx = setLoggerToCtx(ctx, l)
+
+	directory := flag.Arg(0)
+	if directory == "" {
+		slog.Debug("directory command line argument not set")
+		directory = os.Getenv("GITHUB_WORKSPACE")
+		if directory == "" {
+			slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+			directory = "."
+		} else {
+			slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+		}
+	} else {
+		slog.Debug("using directory from cmd argument", "dir", directory)
+	}
 
 	if o.dryRun {
 		slog.Info("Dry-run mode enabled")
