@@ -70,6 +70,11 @@ func main() {
 		concurrencyRPMLimit: *concurrencyLimit,
 		targetBranch:        *targetBranch,
 	}
+	if o.createReadme == false && o.reviewPR == false && o.updateKnowledge == false {
+		slog.Info("please select one or more of the modes: Update Knowledgebase, Create readme, Review PR")
+		flag.Usage()
+		os.Exit(0)
+	}
 
 	directory := flag.Arg(0)
 	if directory == "" {

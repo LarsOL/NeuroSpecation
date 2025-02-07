@@ -121,11 +121,32 @@ func getDefaultBranch() (string, error) {
 	return defaultBranchName, nil
 }
 
-func getGitDiff(defaultBranchName string) (string, error) {
-	cmd := exec.Command("git", "diff", defaultBranchName)
+func getGitDiff(target string) (string, error) {
+	// Debugging commands
+	debugCommands := []struct {
+		name string
+		args []string
+	}{
+		{"git", []string{"status"}},
+		{"git", []string{"branch", "-a"}},
+		{"git", []string{"remote", "-v"}},
+		{"git", []string{"rev-parse", "--is-inside-work-tree"}},
+	}
+
+	for _, cmdInfo := range debugCommands {
+		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
+		} else {
+			slog.Debug(fmt.Sprintf("output of %s %v: %s", cmdInfo.name, cmdInfo.args, string(output)))
+		}
+	}
+
+	cmd := exec.Command("git", "diff", "origin/"+target+"...HEAD")
 	diffOutput, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get diff between current commit and default branch %s: %w", defaultBranchName, err)
+		return "", fmt.Errorf("failed to get diff between current commit and target: %s err: %w", target, err)
 	}
 	return string(diffOutput), nil
 }
