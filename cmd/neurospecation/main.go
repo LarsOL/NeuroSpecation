@@ -4,22 +4,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/LarsOL/NeuroSpecation/aihelpers"
-	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/LarsOL/NeuroSpecation/aihelpers"
+	"log/slog"
 )
 
 type Options struct {
-	dryRun              bool
-	debug               bool
-	logPrompt           bool
-	updateKnowledge     bool
-	model               string
-	createReadme        bool
-	reviewPR            bool
-	concurrencyRPMLimit int
-	targetBranch        string
+	DryRun              bool
+	Debug               bool
+	LogPrompt           bool
+	UpdateKnowledge     bool
+	Model               string
+	CreateReadme        bool
+	ReviewPR            bool
+	ConcurrencyRPMLimit int
+	TargetBranch        string
 }
 
 var (
@@ -29,6 +30,7 @@ var (
 )
 
 func main() {
+	// Define command-line flags
 	debug := flag.Bool("d", false, "Enable debug logging")
 	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
 	logPrompt := flag.Bool("lp", false, "Log the prompt sent to the AI")
@@ -42,6 +44,7 @@ func main() {
 	help := flag.Bool("h", false, "Show help")
 	ver := flag.Bool("v", false, "Show version")
 
+	// Custom usage message
 	flag.Usage = func() {
 		slog.Info("Usage: neurospecation <directory> [flags]")
 		slog.Info("Flags:")
@@ -50,145 +53,157 @@ func main() {
 	}
 	flag.Parse()
 
+	// Handle help and version requests
 	if *help {
 		flag.Usage()
 		os.Exit(0)
 	}
-
 	if *ver {
 		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
 		os.Exit(0)
 	}
 
-	o := &Options{
-		dryRun:              *dryRun,
-		debug:               *debug,
-		logPrompt:           *logPrompt,
-		updateKnowledge:     *updateKnowledge,
-		model:               *model,
-		createReadme:        *createReadme,
-		reviewPR:            *reviewPR,
-		concurrencyRPMLimit: *concurrencyLimit,
-		targetBranch:        *targetBranch,
+	// Build options struct
+	opts := Options{
+		DryRun:              *dryRun,
+		Debug:               *debug,
+		LogPrompt:           *logPrompt,
+		UpdateKnowledge:     *updateKnowledge,
+		Model:               *model,
+		CreateReadme:        *createReadme,
+		ReviewPR:            *reviewPR,
+		ConcurrencyRPMLimit: *concurrencyLimit,
+		TargetBranch:        *targetBranch,
 	}
 
-	lvl := new(slog.LevelVar)
-	if o.debug {
-		lvl.Set(slog.LevelDebug)
+	// Initialize logging
+	levelVar := new(slog.LevelVar)
+	if opts.Debug {
+		levelVar.Set(slog.LevelDebug)
 		slog.Info("Debug logging enabled")
 	} else {
-		lvl.Set(slog.LevelInfo)
+		levelVar.Set(slog.LevelInfo)
 		slog.Debug("Debug logging disabled")
 	}
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: lvl,
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: levelVar,
 	}))
-	slog.SetDefault(l)
+	slog.SetDefault(logger)
 
+	// Create context with the logger
 	ctx := context.Background()
-	ctx = setLoggerToCtx(ctx, l)
+	ctx = setLoggerToCtx(ctx, logger)
 
 	slog.Info("Command line arguments", "args", os.Args)
-	directory := *dir
-	if directory == "" {
-		slog.Debug("directory command line argument not set")
-		directory = os.Getenv("GITHUB_WORKSPACE")
-		if directory == "" {
-			slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
-			directory = "."
+
+	// Determine target directory
+	targetDir := *dir
+	if targetDir == "" {
+		slog.Debug("Directory flag not set; checking GITHUB_WORKSPACE environment variable")
+		targetDir = os.Getenv("GITHUB_WORKSPACE")
+		if targetDir == "" {
+			slog.Debug("GITHUB_WORKSPACE not set; using current directory")
+			targetDir = "."
 		} else {
-			slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+			slog.Debug("Using directory from GITHUB_WORKSPACE", "dir", targetDir)
 		}
 	} else {
-		slog.Debug("using directory from cmd argument", "dir", directory)
+		slog.Debug("Using directory from command line flag", "dir", targetDir)
 	}
 
-	if o.createReadme == false && o.reviewPR == false && o.updateKnowledge == false {
-		slog.Info("please select one or more of the modes: Update Knowledgebase, Create readme, Review PR")
+	// Ensure at least one operation mode is selected
+	if !opts.CreateReadme && !opts.ReviewPR && !opts.UpdateKnowledge {
+		slog.Info("Please select one or more modes: Update Knowledgebase, Create README, or Review PR")
 		flag.Usage()
 		os.Exit(0)
 	}
 
-	if o.dryRun {
+	// Report dry-run mode status
+	if opts.DryRun {
 		slog.Info("Dry-run mode enabled")
 	} else {
 		slog.Debug("Dry-run mode disabled")
 	}
 
+	// Initialize the AI client if not in dry-run mode
 	var aiClient *aihelpers.AIClient
-	if !o.dryRun {
+	if !opts.DryRun {
 		apiKey := os.Getenv("OPENAI_API_KEY")
 		if apiKey == "" {
 			slog.Error("API key is not set")
 			os.Exit(1)
 		}
-		aiClient = aihelpers.NewOpenAIClient(apiKey, o.model)
+		aiClient = aihelpers.NewOpenAIClient(apiKey, opts.Model)
 	}
 
-	if o.updateKnowledge {
+	// Execute selected operations
+	if opts.UpdateKnowledge {
 		slog.Info("Updating AI knowledge base")
-		err := UpdateKnowledgeBase(ctx, directory, aiClient, o)
-		if err != nil {
+		if err := UpdateKnowledgeBase(ctx, targetDir, aiClient, &opts); err != nil {
 			slog.Error("Error updating knowledge base", "err", err)
 			os.Exit(1)
 		}
-		slog.Info("finished updating all knowledge base files")
+		slog.Info("Finished updating knowledge base")
 	}
-	if o.createReadme {
+
+	if opts.CreateReadme {
 		slog.Info("Creating AI README")
-		err := CreateReadMe(ctx, directory, aiClient, o)
-		if err != nil {
-			slog.Error("Error creating readme", "err", err)
+		if err := CreateReadMe(ctx, targetDir, aiClient, &opts); err != nil {
+			slog.Error("Error creating README", "err", err)
 			os.Exit(1)
 		}
-		slog.Info("finished creating readme")
+		slog.Info("Finished creating README")
 	}
-	if o.reviewPR {
+
+	if opts.ReviewPR {
 		slog.Info("Creating PR review")
-		err := ReviewPullRequests(ctx, directory, aiClient, o)
-		if err != nil {
+		if err := ReviewPullRequests(ctx, targetDir, aiClient, &opts); err != nil {
 			slog.Error("Error reviewing pull requests", "err", err)
 			os.Exit(1)
 		}
-		slog.Info("finished creating PR review")
+		slog.Info("Finished creating PR review")
 	}
 }
 
+// promptAI prompts the AI client with the provided prompt.
 func promptAI(ctx context.Context, aiClient *aihelpers.AIClient, prompt string, dryRun bool) (string, error) {
 	if dryRun {
 		slog.Debug("Dry-run mode, skipping AI prompt")
 		return "", nil
 	}
 	loggerFromCtx(ctx).Debug("Prompting AI", "prompt", prompt)
-	ans, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
+	answer, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
 	if err != nil {
 		return "", fmt.Errorf("failed to prompt AI: %w", err)
 	}
-	return ans, nil
+	return answer, nil
 }
 
+// logPromptToFile writes the given prompt to a file in the specified directory.
 func logPromptToFile(dir, filename, prompt string) error {
-	fl, err := os.Create(filepath.Join(dir, filename))
+	filePath := filepath.Join(dir, filename)
+	fl, err := os.Create(filePath)
 	if err != nil {
-		slog.Error("failed to create ai prompt file", "err", err)
+		slog.Error("Failed to create AI prompt file", "err", err)
 		return err
 	}
 	defer fl.Close()
 
-	_, err = fl.WriteString(prompt)
-	if err != nil {
-		slog.Error("failed to write ai prompt file", "err", err)
+	if _, err := fl.WriteString(prompt); err != nil {
+		slog.Error("Failed to write AI prompt to file", "err", err)
 		return err
 	}
 	return nil
 }
 
-const Loggerkey = "logger"
+const loggerKey = "logger"
 
+// setLoggerToCtx stores the logger in the given context.
 func setLoggerToCtx(ctx context.Context, logger *slog.Logger) context.Context {
-	return context.WithValue(ctx, Loggerkey, logger)
+	return context.WithValue(ctx, loggerKey, logger)
 }
 
+// loggerFromCtx retrieves the logger from the given context.
 func loggerFromCtx(ctx context.Context) *slog.Logger {
-	return ctx.Value(Loggerkey).(*slog.Logger)
+	return ctx.Value(loggerKey).(*slog.Logger)
 }
