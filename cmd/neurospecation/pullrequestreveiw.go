@@ -32,6 +32,11 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
+	err := updateGitWorktree(dir)
+	if err != nil {
+		return err
+	}
+
 	if !isInsideGitRepo(dir) {
 		return fmt.Errorf("must be run from within a git repo")
 	}
@@ -152,6 +157,16 @@ func getGitDiff(dir string, target string) (string, error) {
 	return string(diffOutput), nil
 }
 
+func updateGitWorktree(dir string) error {
+	cmd := exec.Command("git", "config", "--local", "core.worktree", dir)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to update core.worktree: %w. Output: %s", err, string(output))
+	}
+	return nil
+}
+
 func debug(dir string) {
 	debugCommands := []struct {
 		name string
@@ -182,9 +197,6 @@ func debug(dir string) {
 		slog.Debug("running: ", "name", cmdInfo.name, "args", cmdInfo.args)
 		cmd := exec.Command(cmdInfo.name, cmdInfo.args...)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(),
-			"GIT_WORK_TREE="+dir,
-			"GIT_DIR="+dir+"/.git")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			slog.Debug(fmt.Sprintf("failed to execute %s %v: %v", cmdInfo.name, cmdInfo.args, err))
