@@ -1,0 +1,42 @@
+software_directory:
+  name: cmd
+  description: A collection of command line commands for managing AI-based processes, including prompt creation, knowledge base updates, pull request reviews, and README generation.
+  key_business_processes:
+    - AI prompting: Provides prompts to an AI client for generating responses.
+    - Knowledge base update: Gathers information and updates a YAML knowledge base.
+    - Pull request review: Automates the review process of GitHub pull requests using AI.
+    - README creation: Generates a README file summarizing the directory's key information.
+  modules:
+    - Helpers
+    - Knowledge Base
+    - Pull Request Review
+    - README Generator
+    - Root Command
+    - Version Command
+  architectural_patterns:
+    - Command line utility with `cobra` library.
+    - Concurrent processing using `sync.WaitGroup`.
+    - Contextual logging with `context` and `log/slog`.
+    - Configuration management using `viper`.
+    - File operations for logging and writing outputs.
+    - External API interactions with `aihelpers` and `github`.
+  key_files:
+    - helpers.go: Provides utility functions for AI prompt and logging operations.
+    - knowledgebase.go: Handles updating the AI knowledge base.
+    - pr.go: Manages pull request reviews with AI assistance.
+    - readme.go: Generates README files with AI-generated summaries.
+    - root.go: Sets up the main `neurospecation` command interface.
+    - version.go: Outputs the current version details of the software.
+  key_links_to_other_modules:
+    - aihelpers: A package dependency used for AI-related functions.
+    - dirhelper: A package used for navigating directories.
+    - github: Go module for interacting with GitHub.
+  key_external_dependencies:
+    - Cobra: For command line utilities.
+    - Viper: For configuration management.
+    - slog: For structured logging.
+    - OpenAI: For AI-generated responses.
+  noteworthy_information:
+    - Dry-run mode (controlled via flag) to test without making external changes.
+    - Supports environmental variables for sensitive information (API keys, GitHub credentials).
+    - Implements rate-limiting for API requests to prevent overload.
