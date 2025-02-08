@@ -155,7 +155,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 			return err
 		}
 	} else {
-		err = writeReviewToPR(ctx, reviewOutput, options)
+		err = writeReviewToPR(ctx, reviewOutput)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	return nil
 }
 
-func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options) error {
+func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
 	repo := os.Getenv("GITHUB_REPOSITORY")
@@ -188,7 +188,7 @@ func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options)
 		return fmt.Errorf("invalid GITHUB_PR_NUMBER format, got %s: err: %w", prNumber, err)
 	}
 
-	if options.debug {
+	if viper.GetBool(debugKey) {
 		// Print context of PR & check we at least have read permission
 		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
 		if err != nil {
@@ -202,7 +202,7 @@ func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options)
 	if err != nil {
 		return fmt.Errorf("failed to create comment on PR, err: %w", err)
 	}
-	if options.debug {
+	if viper.GetBool(debugKey) {
 		slog.Debug("comment", "resp", resp)
 	}
 	return nil
