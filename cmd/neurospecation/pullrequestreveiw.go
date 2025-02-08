@@ -76,7 +76,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 			return err
 		}
 	} else {
-		err = writeReviewToPR(ctx, reviewOutput)
+		err = writeReviewToPR(ctx, reviewOutput, options)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	return nil
 }
 
-func writeReviewToPR(ctx context.Context, reviewOutput string) error {
+func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options) error {
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
 	repo := os.Getenv("GITHUB_REPOSITORY")
@@ -109,10 +109,22 @@ func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 		return fmt.Errorf("invalid GITHUB_PR_NUMBER format, got %s: err: %w", prNumber, err)
 	}
 
+	if options.debug {
+		// Print context of PR & check we at least have read permission
+		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
+		if err != nil {
+			slog.Error("unable to get pr", "err", err)
+		}
+		slog.Debug("Adding comment to this PR", "pr", pr)
+	}
+
 	comment := &github.IssueComment{Body: &reviewOutput}
-	_, _, err = client.Issues.CreateComment(ctx, owner, repoName, prNum, comment)
+	_, resp, err := client.Issues.CreateComment(ctx, owner, repoName, prNum, comment)
 	if err != nil {
 		return fmt.Errorf("failed to create comment on PR, err: %w", err)
+	}
+	if options.debug {
+		slog.Debug("comment", "resp", resp)
 	}
 	return nil
 }
@@ -167,21 +179,10 @@ func debug(dir string) {
 		name string
 		args []string
 	}{
-		{"ls", []string{"."}},
-		{"env", []string{""}},
-		{"ls", []string{"-la", "/github/workspace/.git"}},
-		{"ls", []string{"-la", "./.git"}},
-		{"ls", []string{"-la"}},
-		{"ls", []string{"~"}},
-		{"ls", []string{".."}},
-		{"ls", []string{"../.."}},
 		{"pwd", []string{""}},
+		{"ls", []string{"-la"}},
 		{"git", []string{"version"}},
 		{"git", []string{"status"}},
-		{"git", []string{"-C", ".", "status"}},
-		{"git", []string{"-C", "..", "status"}},
-		{"git", []string{"-C", "/github/workspace", "status"}},
-		{"git", []string{"-C", "../..", "status"}},
 		{"git", []string{"rev-parse", "--show-toplevel"}},
 		{"git", []string{"branch", "-a"}},
 		{"git", []string{"remote", "-v"}},
