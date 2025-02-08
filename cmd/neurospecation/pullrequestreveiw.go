@@ -110,6 +110,7 @@ func writeReviewToPR(ctx context.Context, reviewOutput string, options *Options)
 	}
 
 	if options.debug {
+		// Print context of PR & check we at least have read permission
 		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
 		if err != nil {
 			slog.Error("unable to get pr", "err", err)

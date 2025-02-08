@@ -7,12 +7,11 @@ on:
 
 permissions:
   contents: read
-  issues: write
   pull-requests: write
 
 jobs:
   PRReview:
-    name: GitHub Actions Test
+    name: Neurospection PR Review
     runs-on: ubuntu-latest
 
     steps:
@@ -47,7 +46,6 @@ jobs:
         uses: ./ # TODO: once published to the store, use the proper version
         with:
           debug: "-d"
-          review: "-r"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
