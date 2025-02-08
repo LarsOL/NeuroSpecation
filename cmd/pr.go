@@ -133,7 +133,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
-	prompt, err := createReviewPrompt(gitRoot, diffOutput)
+	prompt, err := createReviewPrompt(ctx, gitRoot, diffOutput)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,16 @@ func debug(dir string) {
 	}
 }
 
-func createReviewPrompt(gitRoot, diffOutput string) (string, error) {
+func createReviewPrompt(ctx context.Context, gitRoot, diffOutput string) (string, error) {
+	reviewPrompt := ReviewPrompt
+	if os.Getenv("GITHUB_TOKEN") != "" {
+		title, body, err := getPRInfo(ctx)
+		if err != nil {
+			return "", err
+		}
+		reviewPrompt = reviewPrompt + "<PR Details>\n" + "Title: " + title + "\nBody: " + body + "\n</PR Details>\n"
+	}
+
 	changedFiles := strings.Split(diffOutput, "\n")
 	knowledgeContent := ""
 	for _, line := range changedFiles {
@@ -303,8 +312,44 @@ func createReviewPrompt(gitRoot, diffOutput string) (string, error) {
 			}
 		}
 	}
-	reviewPrompt := ReviewPrompt + "\n<Repo Context>\n" + knowledgeContent + "\n</Repo Context>\n" + "\n<Diff>\n" + diffOutput + "\n</Diff>\n"
+	reviewPrompt = reviewPrompt + "\n<Repo Context>\n" + knowledgeContent + "\n</Repo Context>\n" + "\n<Diff>\n" + diffOutput + "\n</Diff>\n"
 	return reviewPrompt, nil
+}
+
+func getPRInfo(ctx context.Context) (string, string, error) {
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		return "", "", nil
+	}
+
+	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+
+	repo := os.Getenv("GITHUB_REPOSITORY")
+	prNumber := os.Getenv("GITHUB_PR_NUMBER")
+
+	if repo == "" {
+		return "", "", fmt.Errorf("GITHUB_REPOSITORY environment variable is not set")
+	}
+	if prNumber == "" {
+		return "", "", fmt.Errorf("GITHUB_PR_NUMBER environment variable is not set")
+	}
+
+	ownerRepo := strings.Split(repo, "/")
+	if len(ownerRepo) != 2 {
+		return "", "", fmt.Errorf("invalid GITHUB_REPOSITORY format, got %s", repo)
+	}
+
+	owner, repoName := ownerRepo[0], ownerRepo[1]
+	prNum, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid GITHUB_PR_NUMBER format, got %s: err: %w", prNumber, err)
+	}
+
+	pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
+	if err != nil {
+		return "", "", fmt.Errorf("unable to get pr. err: %w", err)
+	}
+
+	return *pr.Title, *pr.Body, nil
 }
 
 func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
