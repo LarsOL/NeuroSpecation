@@ -371,7 +371,29 @@ func getPRInfo(ctx context.Context) (string, string, error) {
 		return "", "", fmt.Errorf("unable to get pr. err: %w", err)
 	}
 
-	return *pr.Title, *pr.Body, nil
+	if pr == nil {
+		return "", "", fmt.Errorf("expected pr data to be not nil")
+	}
+
+	if pr.Title == nil && pr.Body == nil {
+		return "", "", fmt.Errorf("expected pr title & body to be not nil")
+	}
+
+	title := ""
+	if pr.Title == nil {
+		slog.Debug("pr title is empty")
+	} else {
+		title = *pr.Title
+	}
+
+	body := ""
+	if pr.Body == nil {
+		slog.Debug("pr body is empty")
+	} else {
+		body = *pr.Body
+	}
+
+	return title, body, nil
 }
 
 func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
