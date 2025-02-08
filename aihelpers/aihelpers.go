@@ -40,13 +40,13 @@ type PromptRequest struct {
 
 // TODO: Convert to a streaming version to avoid large memory usage on large files
 // Prompt sends a prompt to OpenAI and returns the response text.
-func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, error) {
+func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, *openai.ChatCompletion, error) {
 	if client.APIKey == "" {
-		return "", errors.New("API key is not set")
+		return "", nil, errors.New("API key is not set")
 	}
 
 	if client.Model == "" {
-		return "", errors.New("model is not set")
+		return "", nil, errors.New("model is not set")
 	}
 
 	//TODO: Use req to tailor the request
@@ -59,12 +59,12 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 	})
 	if err != nil {
 		// wrap the error with additional context
-		return "", fmt.Errorf("failed to create chat completion: %w", err)
+		return "", nil, fmt.Errorf("failed to create chat completion: %w", err)
 	}
 
 	if len(chatCompletion.Choices) == 0 {
-		return "", errors.New("no response choices from OpenAI")
+		return "", nil, errors.New("no response choices from OpenAI")
 	}
 
-	return chatCompletion.Choices[0].Message.Content, nil
+	return chatCompletion.Choices[0].Message.Content, chatCompletion, nil
 }
