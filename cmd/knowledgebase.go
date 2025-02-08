@@ -171,7 +171,7 @@ func writeKnowledgeBase(dir, ans string, dryRun bool) error {
 		return nil
 	}
 
-	if ans == "no" {
+	if strings.EqualFold(ans, "no") || strings.EqualFold(ans, "no.") {
 		slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
 		return nil
 	}

@@ -1,36 +1,26 @@
-directory: dirhelper
-description: >
-  The `dirhelper` directory contains functionality for traversing directories
-  to filter and process files and subdirectories based on custom criteria, specifically
-  for the identification of code files.
-
-key_business_processes:
-  - Directory traversal and processing.
-  - Filtering files based on extensions and directory names.
-  - Reading file contents and returning structured data.
-
-module:
+directory_info:
   name: dirhelper
-  purpose: >
-    To facilitate the traversal of directory structures, applying filters to determine
-    which files and directories should be processed, and collating information about
-    these files and directories.
+  description: A utility package for traversing directories and processing files
+  business_processes:
+    - Traverse and process directories
+    - Filter files and directories based on certain criteria
+    - Perform custom actions on directories
+  module_explanation: 
+    - This module handles directory traversal and file filtering for applications that need to interact with file systems.
+  architectural_patterns:
+    - Utilizes callback functions for flexible directory processing (functional programming pattern)
+    - Separation of concerns by defining clear functions for different operations
+  key_files:
+    - dirhelper.go: The main implementation file containing all the logic related to directory operations
+  key_functions:
+    - WalkDirectories: Core function for directory traversal and processing using customizable callbacks
+    - readDirectoryContents: Reads files and subdirectory information from a given directory
+    - IsCodeFile: Helper function to determine if a file is considered a code file based on its extension
+    - FilterNodes: Function to filter out unwanted files and directories
+  integration_links:
+    - No direct links to other modules are specified in the provided information
 
-architectural_patterns:
-  - Walk function: Utilizes recursion to traverse directory paths.
-  - Modular design: Uses function types (`FilterFunc`) for customizable filtering logic.
-
-key_files:
-  - dirhelper.go: Contains all the logic for directory traversal, filtering, and file content reading.
-
-key_functions:
-  - IsCodeFile(node fs.DirEntry): Determines if a directory entry is a code file based on extension.
-  - FilterNodes(node fs.DirEntry): Filters out non-code files and specific unwanted directories.
-  - WalkDirectories(root string, onDir func, filterNodes FilterFunc): Main traversal logic for processing directories.
-  - readDirectoryContents(dir string, filterNodes FilterFunc): Helper function to read and categorize directory entries.
-
-key_links_to_other_modules: none
-
-additional_information:
-  - Utilizes the Go standard libraries for filesystem operations.
-  - Allows customization through the `FilterFunc` type for different directory filtering needs.
+additional_notes:
+  - Focuses on code file processing, showing importance in coding environments handling various programming languages
+  - Provides flexibility with filtering and callback functions allowing tailored directory processing tasks
+  - Filter logic supports ignoring specific development and environment folders or files like '.git', '.idea', etc.
