@@ -39,7 +39,7 @@ func gatherAIKnowledgeForReadMe(dir string) (string, error) {
 	prompt.WriteString(ReadmePrompt)
 	prompt.WriteString("\n<Summarised AI knowledge base>\n")
 	err := dirhelper.WalkDirectories(dir, func(d string, files []dirhelper.FileContent, subdirs []string) error {
-		slog.Info("Processing Directory", "Dir", d)
+		slog.Debug("Processing Directory", "Dir", d)
 		for _, file := range files {
 			slog.Debug("Processing file", "File", file.Name)
 			prompt.WriteString("- " + file.FullPath() + "\n")
