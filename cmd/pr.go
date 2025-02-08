@@ -1,22 +1,101 @@
-package main
+package cmd
 
 import (
 	"context"
 	"fmt"
 	"github.com/LarsOL/NeuroSpecation/aihelpers"
 	"github.com/google/go-github/v69/github"
+	"github.com/spf13/viper"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
+
+var prCmd = &cobra.Command{
+	Use:   "pr",
+	Short: "Review pull requests",
+	Run: func(cmd *cobra.Command, args []string) {
+		lvl := new(slog.LevelVar)
+		if viper.GetBool(debugKey) {
+			lvl.Set(slog.LevelDebug)
+			slog.Info("Debug logging enabled")
+		} else {
+			lvl.Set(slog.LevelInfo)
+			slog.Debug("Debug logging disabled")
+		}
+		l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level: lvl,
+		}))
+		slog.SetDefault(l)
+
+		ctx := context.Background()
+		ctx = setLoggerToCtx(ctx, l)
+
+		slog.Info("Command line arguments", "args", os.Args)
+		directory := cmd.Flag("dir").Value.String()
+		if directory == "" {
+			slog.Debug("directory command line argument not set")
+			directory = os.Getenv("GITHUB_WORKSPACE")
+			if directory == "" {
+				slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+				directory = "."
+			} else {
+				slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+			}
+		} else {
+			slog.Debug("using directory from cmd argument", "dir", directory)
+		}
+
+		if viper.GetBool(dryRunKey) {
+			slog.Info("Dry-run mode enabled")
+		} else {
+			slog.Debug("Dry-run mode disabled")
+		}
+
+		var aiClient *aihelpers.AIClient
+		if !viper.GetBool(dryRunKey) {
+			apiKey := os.Getenv("OPENAI_API_KEY")
+			if apiKey == "" {
+				slog.Error("API key is not set")
+				os.Exit(1)
+			}
+			aiClient = aihelpers.NewOpenAIClient(apiKey, viper.GetString(modelKey))
+		}
+
+		slog.Info("Creating PR review")
+		err := ReviewPullRequests(ctx, directory, aiClient)
+		if err != nil {
+			slog.Error("Error reviewing pull requests", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("finished creating PR review")
+	},
+}
+
+const targetBranchKey = "target-branch"
+
+func init() {
+	rootCmd.AddCommand(prCmd)
+
+	prCmd.PersistentFlags().String(targetBranchKey, "", "Target branch for pull request reviews")
+
+	err := viper.BindPFlags(prCmd.PersistentFlags())
+	if err != nil {
+		slog.Error("could not bind to persistent flags:", "err", err)
+		os.Exit(1)
+	}
+
+}
 
 const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and provide valuable feedback. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
 
-func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	targetBranch := options.targetBranch
+func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
+	targetBranch := viper.GetString(targetBranchKey)
 	if targetBranch == "" {
 		slog.Debug("no target branch flag set")
 		targetBranch = os.Getenv("GITHUB_BASE_REF")
@@ -32,7 +111,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		}
 	}
 
-	if options.debug {
+	if viper.GetBool(debugKey) {
 		debug(dir)
 	}
 
@@ -59,19 +138,19 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		return err
 	}
 
-	if options.logPrompt {
+	if viper.GetBool(logPromptKey) {
 		if err := logPromptToFile(dir, "ai_review_prompt.txt", prompt); err != nil {
 			return err
 		}
 	}
 
-	reviewOutput, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+	reviewOutput, err := promptAI(ctx, aiClient, prompt, viper.GetBool(dryRunKey))
 	if err != nil {
 		return err
 	}
 
 	if os.Getenv("GITHUB_TOKEN") == "" {
-		err := writeReviewFile(dir, reviewOutput, options.dryRun)
+		err := writeReviewFile(dir, reviewOutput, viper.GetBool(dryRunKey))
 		if err != nil {
 			return err
 		}
@@ -204,16 +283,6 @@ func debug(dir string) {
 			slog.Debug(fmt.Sprintf("output of %s %v: %s", cmdInfo.name, cmdInfo.args, string(output)))
 		}
 	}
-}
-
-func getGitRoot(dir string) (string, error) {
-	cmd := runGitCommand(dir, "rev-parse", "--show-toplevel")
-	cmd.Dir = dir
-	output, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to get git root directory: %w", err)
-	}
-	return strings.TrimSpace(string(output)), nil
 }
 
 func createReviewPrompt(gitRoot, diffOutput string) (string, error) {

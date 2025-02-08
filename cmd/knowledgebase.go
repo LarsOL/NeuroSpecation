@@ -1,25 +1,88 @@
-package main
+package cmd
 
 import (
 	"context"
 	"fmt"
 	"github.com/LarsOL/NeuroSpecation/aihelpers"
 	"github.com/LarsOL/NeuroSpecation/dirhelper"
+	"github.com/spf13/viper"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/spf13/cobra"
 )
+
+var knowledgebaseCmd = &cobra.Command{
+	Use:   "knowledgebase",
+	Short: "Update the knowledge base",
+	Run: func(cmd *cobra.Command, args []string) {
+		slog.Info("Command line arguments", "args", os.Args)
+		directory := cmd.Flag("dir").Value.String()
+		if directory == "" {
+			slog.Debug("directory command line argument not set")
+			directory = os.Getenv("GITHUB_WORKSPACE")
+			if directory == "" {
+				slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+				directory = "."
+			} else {
+				slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+			}
+		} else {
+			slog.Debug("using directory from cmd argument", "dir", directory)
+		}
+
+		if viper.GetBool(dryRunKey) {
+			slog.Info("Dry-run mode enabled")
+		} else {
+			slog.Debug("Dry-run mode disabled")
+		}
+
+		var aiClient *aihelpers.AIClient
+		if !viper.GetBool(dryRunKey) {
+			apiKey := os.Getenv("OPENAI_API_KEY")
+			if apiKey == "" {
+				slog.Error("API key is not set")
+				os.Exit(1)
+			}
+			aiClient = aihelpers.NewOpenAIClient(apiKey, viper.GetString(modelKey))
+		}
+
+		slog.Info("Updating AI knowledge base")
+		err := UpdateKnowledgeBase(cmd.Context(), directory, aiClient)
+		if err != nil {
+			slog.Error("Error updating knowledge base", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("finished updating all knowledge base files")
+	},
+}
+
+const throttleKey = "throttle"
+
+func init() {
+	rootCmd.AddCommand(knowledgebaseCmd)
+
+	knowledgebaseCmd.PersistentFlags().Int(throttleKey, 500, "API limit in requests per minute")
+
+	err := viper.BindPFlags(knowledgebaseCmd.PersistentFlags())
+	if err != nil {
+		slog.Error("could not bind to persistent flags:", "err", err)
+		os.Exit(1)
+	}
+}
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
 
-func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
+func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	// Rate limit to concurrencyRPMThrottle requests per minute
-	throttle := make(chan time.Time, options.concurrencyRPMThrottle)
+	reqPerMin := viper.GetInt(throttleKey)
+	throttle := make(chan time.Time, reqPerMin)
 	go func() {
-		ticker := time.NewTicker(time.Minute / time.Duration(options.concurrencyRPMThrottle))
+		ticker := time.NewTicker(time.Minute / time.Duration(reqPerMin))
 		defer ticker.Stop()
 		for t := range ticker.C {
 			select {
@@ -43,19 +106,19 @@ func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AI
 		go func() {
 			defer wg.Done()
 			prompt := createKnowledgeBasePrompt(dir, files, subdirs)
-			if options.logPrompt {
+			if viper.GetBool(logPromptKey) {
 				if err := logPromptToFile(dir, "ai_knowledge_prompt.txt", prompt); err != nil {
 					slog.Error("error logging prompt", "dir", dir, "err", err)
 				}
 			}
 			<-throttle
-			ans, err := promptAI(ctx, aiClient, prompt, options.dryRun)
+			ans, err := promptAI(ctx, aiClient, prompt, viper.GetBool(dryRunKey))
 			if err != nil {
 				slog.Error("error prompting AI", "dir", dir, "err", err)
 				return
 			}
 
-			err = writeKnowledgeBase(dir, ans, options.dryRun)
+			err = writeKnowledgeBase(dir, ans, viper.GetBool(dryRunKey))
 			if err != nil {
 				slog.Error("error writing knowledge base file", "dir", dir, "err", err)
 				return
