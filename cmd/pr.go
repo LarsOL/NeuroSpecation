@@ -92,7 +92,7 @@ func init() {
 
 }
 
-const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and only provide valuable feedback. Do not repeat obvious statements. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
+const ReviewPrompt = "You are a skilled software engineer, review the given pull requests and only provide valuable feedback. Do not repeat obvious statements. Each point should provide a concrete improvement. Look for both high level architectural problems and code level improvements. You will be first given the repo context as distilled by a AI, then the PR."
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	targetBranch := viper.GetString(targetBranchKey)
@@ -379,21 +379,7 @@ func getPRInfo(ctx context.Context) (string, string, error) {
 		return "", "", fmt.Errorf("expected pr title & body to be not nil")
 	}
 
-	title := ""
-	if pr.Title == nil {
-		slog.Debug("pr title is empty")
-	} else {
-		title = *pr.Title
-	}
-
-	body := ""
-	if pr.Body == nil {
-		slog.Debug("pr body is empty")
-	} else {
-		body = *pr.Body
-	}
-
-	return title, body, nil
+	return pr.GetTitle(), pr.GetBody(), nil
 }
 
 func writeReviewFile(dir, reviewOutput string, dryRun bool) error {
