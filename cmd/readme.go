@@ -78,16 +78,6 @@ var readmeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(readmeCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// readmeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// readmeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 const ReadmePrompt = "Create a README file for this directory. This should contain a concise representation of all the key information needed for a skilled software engineer to understand the repo. Do not guess at any information. Only use the provided text. Reply with a markdown file."
