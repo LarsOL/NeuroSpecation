@@ -1,71 +1,72 @@
-# NeuroSpectation 
+# Project Overview
 
-This repository contains components designed for enhancing interactions with OpenAI's API and supporting AI-based operations through command-line tools. Below is a summary of the available directories and their functionalities.
+This repository contains a collection of tools and utilities to interface with OpenAI APIs using Go, manage AI-driven processes, and handle file system interactions efficiently. The components are organized into directories, each catering to specific functionalities.
 
-## Usage
-```yaml
-name: Example Workflow
+## Directory Structure
 
-on:
-  workflow_dispatch:
+### 1. `aihelpers`
 
-jobs:
-  example:
-    name: neurospecation
-    runs-on: ubuntu-latest
+- **Description**: Contains Go source files to interface with OpenAI APIs.
+- **Key Business Processes**:
+  - Initialize an OpenAI client.
+  - Set the AI model for requests.
+  - Handle prompt requests to OpenAI and manage responses.
+- **Architectural Patterns**:
+  - Client initialization pattern.
+  - Singleton-like structure for ensuring consistent client configuration.
+  - Error handling for network operations.
+- **Main File**:
+  - `aihelpers.go`: Implements all main functionalities for OpenAI client operations.
+- **Dependencies**: Relies on the OpenAI Go SDK and `github.com/openai/openai-go` for API interactions.
 
-    steps:
-      - name: Example
-        id: example
-        uses: actions/neurospecation@main
-```
+### 2. `cmd`
 
-## Directories Overview
+- **Description**: A command-line interface (CLI) for managing AI processes, such as AI prompting, knowledge base updating, pull request reviews, and README generation.
+- **Key Business Processes**:
+  - Generate AI prompts and responses.
+  - Update knowledge bases in YAML format.
+  - Automate GitHub pull request reviews with AI.
+  - Generate README files with AI summaries.
+- **Architectural Patterns**:
+  - CLI utility implemented with the `cobra` library.
+  - Concurrent processing via `sync.WaitGroup`.
+  - Structured logging with `context` and `log/slog`.
+  - Configuration management via `viper`.
+  - File operations for logging and writing outputs.
+- **Key Files**:
+  - `helpers.go`: Utility functions for AI prompt handling and logging.
+  - `knowledgebase.go`: Manages knowledge base operations.
+  - `pr.go`: Facilitates AI-assisted pull request reviews.
+  - `readme.go`: Handles README generation.
+  - `root.go`: Main command interface setup.
+  - `version.go`: Outputs software version details.
+- **External Dependencies**:
+  - Cobra and Viper for CLI and configuration management.
+  - OpenAI for generating AI responses.
+- **Note**: Supports dry-run mode for testing and environmental variables for sensitive data management.
 
-### 1. aihelpers
+### 3. `dirhelper`
 
-- **Description**: A package for communicating with OpenAI's API via a client-server architectural pattern.
-- **Primary Use**: Facilitates prompt-based text generation by interacting with OpenAI's API.
-- **Implemented In**: Go
-- **Key Components**:
-  - `AIClient`: Data structure representing an OpenAI client with essential fields such as `APIKey`, `Model`, and `Client`.
-  - `NewOpenAIClient`: Initializes a new AI client using the API key and model.
-  - `SetModel`: Method to change the AI model for requests.
-  - `PromptRequest`: Structure for making prompt requests, including fields for prompt text, max tokens, and temperature.
-  - `Prompt`: Executes prompts and retrieves responses from OpenAI.
-- **Key File**: `aihelpers.go`: Houses the core logic for API interaction.
-- **Dependencies**: Relies on the `openai-go` library for API calls.
+- **Description**: Provides utilities for traversing directories and handling files.
+- **Business Processes**:
+  - Directory and file processing.
+  - Filtering based on specific criteria.
+  - Custom directory actions.
+- **Architectural Patterns**:
+  - Functional programming with callback functions for flexibility.
+  - Separation of concerns with distinct operation functions.
+- **Key Files**:
+  - `dirhelper.go`: Main implementation for directory operations.
+- **Key Functions**:
+  - `WalkDirectories`: Core directory traversal function with customizable callbacks.
+  - `readDirectoryContents`: Reads directory contents.
+  - `IsCodeFile`: Checks if a file is a code file.
+  - `FilterNodes`: Filters unwanted files/directories.
+- **Additional Notes**: Focuses on code file processing, with flexible logic for filtering directories such as `.git`, `.idea`, etc.
 
-### 2. cmd/neurospecation
+## General Information
 
-- **Description**: Contains CLI-based code for various AI operations such as updating a knowledge base, generating READMEs, and reviewing pull requests.
-- **Purpose**: Offers tools for AI-based document creation and code analysis.
-- **Architectural Pattern**: CLI, allowing users to manage operations with command-line flags.
-- **Key File**: `main.go`: Acts as the entry point, setting up configurations and operations.
-- **Functional Features**:
-  - Update AI knowledge base.
-  - Generate documentation.
-  - Review pull requests.
-- **Execution**: Controlled via command-line flags (e.g., `-uk` for knowledge update, `-dr` for dry-run).
-- **Dependencies**: Uses OpenAI API, configured by the `OPENAI_API_KEY` environment variable.
+- **Key External Dependencies**: Includes OpenAI SDK, Cobra, Viper, and logging packages.
+- **Noteworthy Capabilities**: Implements rate-limiting and environmental variable handling for enhanced manageability.
 
-### 3. dirhelper
-
-- **Description**: Supports directory traversal and file filtering.
-- **Purpose**: Efficiently processes directories and files, identifying code files through customizable filters.
-- **Key File**: `dirhelper.go`: Implements traversal, filtering, and content reading logic.
-- **Functions**:
-  - `IsCodeFile`: Identifies code files based on extensions.
-  - `FilterNodes`: Excludes non-code files and unwanted directories.
-  - `WalkDirectories`: Traverses directories using `Walk` function.
-- **Features**: Modular design, utilizing Go's filesystem libraries.
-
-## Development and Maintenance
-
-- **Enhancements**:
-  - Convert `Prompt` function in `aihelpers` to a streaming version for large data.
-- **Dependencies**:
-  - OpenAI API and `openai-go` library are central dependencies.
-  
-For any further details or assistance with using this repository, please refer to in-file comments and function documentation.
-```
+This README provides a structural overview and key insights into the components, dependencies, and architectural patterns used within this repository. For detailed usage instructions or contributions, refer to the source code or internal documentation within each directory.

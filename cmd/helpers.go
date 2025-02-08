@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/LarsOL/NeuroSpecation/aihelpers"
+	"github.com/spf13/viper"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -16,7 +17,10 @@ func promptAI(ctx context.Context, aiClient *aihelpers.AIClient, prompt string, 
 		return "", nil
 	}
 	loggerFromCtx(ctx).Debug("Prompting AI", "prompt", prompt)
-	ans, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
+	ans, resp, err := aiClient.Prompt(ctx, aihelpers.PromptRequest{Prompt: prompt})
+	if viper.GetBool(debugKey) {
+		slog.Debug("openai resp", "resp", resp)
+	}
 	if err != nil {
 		return "", fmt.Errorf("failed to prompt AI: %w", err)
 	}
