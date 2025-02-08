@@ -28,24 +28,12 @@ jobs:
           git fetch origin $TARGET_BRANCH
           git branch --track $TARGET_BRANCH origin/$TARGET_BRANCH || true
 
-      - name: Debug Git Environment
-        run: |
-          echo "Checking if we are inside a Git repo..."
-          pwd
-          ls -la
-          git rev-parse --is-inside-work-tree || echo "Not a git repo"
-          git status || echo "Git status failed"
-          git branch -a || echo "git branch failed"
-          git remote -v || echo "git remote -v failed"
-          git diff main || echo "git diff main failed"
-          git diff main...HEAD || echo "git diff main...HEAD failed"
-        shell: bash
 
       - name: Test Local Action
         id: test-action
         uses: ./ # TODO: once published to the store, use the proper version
         with:
-          review: "-r"
+          review: "pr"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
