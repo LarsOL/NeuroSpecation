@@ -2,24 +2,24 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"github.com/LarsOL/NeuroSpecation/aihelpers"
+	"github.com/spf13/cobra"
 	"log/slog"
 	"os"
 	"path/filepath"
 )
 
 type Options struct {
-	dryRun              bool
-	debug               bool
-	logPrompt           bool
-	updateKnowledge     bool
-	model               string
-	createReadme        bool
-	reviewPR            bool
-	concurrencyRPMLimit int
-	targetBranch        string
+	dryRun                 bool
+	debug                  bool
+	logPrompt              bool
+	updateKnowledge        bool
+	model                  string
+	createReadme           bool
+	reviewPR               bool
+	concurrencyRPMThrottle int
+	targetBranch           string
 }
 
 var (
@@ -29,128 +29,225 @@ var (
 )
 
 func main() {
-	debug := flag.Bool("d", false, "Enable debug logging")
-	dryRun := flag.Bool("dr", false, "Enable dry-run mode")
-	logPrompt := flag.Bool("lp", false, "Log the prompt sent to the AI")
-	updateKnowledge := flag.Bool("uk", false, "Update the knowledge base")
-	model := flag.String("m", "gpt-4o", "The model to use for AI requests")
-	createReadme := flag.Bool("cr", false, "Create a summary of the directory")
-	reviewPR := flag.Bool("r", false, "Review pull requests")
-	concurrencyLimit := flag.Int("cl", 500, "Concurrency limit for updating knowledge base")
-	targetBranch := flag.String("tb", "", "Target branch for pull request reviews")
-	dir := flag.String("dir", "", "Directory to run on")
-	help := flag.Bool("h", false, "Show help")
-	ver := flag.Bool("v", false, "Show version")
+	o := &Options{}
 
-	flag.Usage = func() {
-		slog.Info("Usage: neurospecation <directory> [flags]")
-		slog.Info("Flags:")
-		flag.PrintDefaults()
-		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
-	}
-	flag.Parse()
-
-	if *help {
-		flag.Usage()
-		os.Exit(0)
+	rootCmd := &cobra.Command{
+		Use:   "neurospecation",
+		Short: "NeuroSpecation CLI",
 	}
 
-	if *ver {
-		slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
-		os.Exit(0)
-	}
+	rootCmd.PersistentFlags().BoolVarP(&o.debug, "debug", "d", false, "Enable debug logging")
+	rootCmd.PersistentFlags().BoolVar(&o.dryRun, "dry-run", false, "Enable dry-run mode")
+	rootCmd.PersistentFlags().StringVarP(&o.model, "model", "m", "gpt-4o", "The model to use for AI requests")
+	rootCmd.PersistentFlags().StringVarP(&o.targetBranch, "dir", "", "", "Directory to run on")
+	rootCmd.PersistentFlags().IntVar(&o.concurrencyRPMThrottle, "throttle", 500, "API limit in requests per minute")
 
-	o := &Options{
-		dryRun:              *dryRun,
-		debug:               *debug,
-		logPrompt:           *logPrompt,
-		updateKnowledge:     *updateKnowledge,
-		model:               *model,
-		createReadme:        *createReadme,
-		reviewPR:            *reviewPR,
-		concurrencyRPMLimit: *concurrencyLimit,
-		targetBranch:        *targetBranch,
-	}
+	rootCmd.AddCommand(createReadmeCmd(o))
+	rootCmd.AddCommand(reviewPRCmd(o))
+	rootCmd.AddCommand(updateKnowledgeCmd(o))
+	rootCmd.AddCommand(versionCmd(o))
 
-	lvl := new(slog.LevelVar)
-	if o.debug {
-		lvl.Set(slog.LevelDebug)
-		slog.Info("Debug logging enabled")
-	} else {
-		lvl.Set(slog.LevelInfo)
-		slog.Debug("Debug logging disabled")
+	err := rootCmd.Execute()
+	if err != nil {
+		slog.Error("Error:", "err", err)
+		os.Exit(1)
 	}
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: lvl,
-	}))
-	slog.SetDefault(l)
+}
+func versionCmd(o *Options) *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print neurospectation version",
+		Run: func(cmd *cobra.Command, args []string) {
+			slog.Info("Details:", "version", version, "commit", commit, "releaseDate", date)
+		},
+	}
+}
+func createReadmeCmd(o *Options) *cobra.Command {
+	return &cobra.Command{
+		Use:   "create-readme",
+		Short: "Create a summary of the directory",
+		Run: func(cmd *cobra.Command, args []string) {
+			lvl := new(slog.LevelVar)
+			if o.debug {
+				lvl.Set(slog.LevelDebug)
+				slog.Info("Debug logging enabled")
+			} else {
+				lvl.Set(slog.LevelInfo)
+				slog.Debug("Debug logging disabled")
+			}
+			l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: lvl,
+			}))
+			slog.SetDefault(l)
 
-	ctx := context.Background()
-	ctx = setLoggerToCtx(ctx, l)
+			ctx := context.Background()
+			ctx = setLoggerToCtx(ctx, l)
 
-	slog.Info("Command line arguments", "args", os.Args)
-	directory := *dir
-	if directory == "" {
-		slog.Debug("directory command line argument not set")
-		directory = os.Getenv("GITHUB_WORKSPACE")
-		if directory == "" {
-			slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
-			directory = "."
-		} else {
-			slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
-		}
-	} else {
-		slog.Debug("using directory from cmd argument", "dir", directory)
-	}
+			slog.Debug("Command line arguments", "args", os.Args)
+			directory := cmd.Flag("dir").Value.String()
+			if directory == "" {
+				slog.Debug("directory command line argument not set")
+				directory = os.Getenv("GITHUB_WORKSPACE")
+				if directory == "" {
+					slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+					directory = "."
+				} else {
+					slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+				}
+			} else {
+				slog.Debug("using directory from cmd argument", "dir", directory)
+			}
 
-	if o.createReadme == false && o.reviewPR == false && o.updateKnowledge == false {
-		slog.Info("please select one or more of the modes: Update Knowledgebase, Create readme, Review PR")
-		flag.Usage()
-		os.Exit(0)
-	}
+			if o.dryRun {
+				slog.Info("Dry-run mode enabled")
+			} else {
+				slog.Debug("Dry-run mode disabled")
+			}
 
-	if o.dryRun {
-		slog.Info("Dry-run mode enabled")
-	} else {
-		slog.Debug("Dry-run mode disabled")
-	}
+			var aiClient *aihelpers.AIClient
+			if !o.dryRun {
+				apiKey := os.Getenv("OPENAI_API_KEY")
+				if apiKey == "" {
+					slog.Error("API key is not set")
+					os.Exit(1)
+				}
+				aiClient = aihelpers.NewOpenAIClient(apiKey, o.model)
+			}
 
-	var aiClient *aihelpers.AIClient
-	if !o.dryRun {
-		apiKey := os.Getenv("OPENAI_API_KEY")
-		if apiKey == "" {
-			slog.Error("API key is not set")
-			os.Exit(1)
-		}
-		aiClient = aihelpers.NewOpenAIClient(apiKey, o.model)
+			slog.Info("Creating AI README")
+			err := CreateReadMe(ctx, directory, aiClient, o)
+			if err != nil {
+				slog.Error("Error creating readme", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("finished creating readme")
+		},
 	}
+}
 
-	if o.updateKnowledge {
-		slog.Info("Updating AI knowledge base")
-		err := UpdateKnowledgeBase(ctx, directory, aiClient, o)
-		if err != nil {
-			slog.Error("Error updating knowledge base", "err", err)
-			os.Exit(1)
-		}
-		slog.Info("finished updating all knowledge base files")
+func reviewPRCmd(o *Options) *cobra.Command {
+	return &cobra.Command{
+		Use:   "review-pr",
+		Short: "Review pull requests",
+		Run: func(cmd *cobra.Command, args []string) {
+			lvl := new(slog.LevelVar)
+			if o.debug {
+				lvl.Set(slog.LevelDebug)
+				slog.Info("Debug logging enabled")
+			} else {
+				lvl.Set(slog.LevelInfo)
+				slog.Debug("Debug logging disabled")
+			}
+			l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: lvl,
+			}))
+			slog.SetDefault(l)
+
+			ctx := context.Background()
+			ctx = setLoggerToCtx(ctx, l)
+
+			slog.Info("Command line arguments", "args", os.Args)
+			directory := cmd.Flag("dir").Value.String()
+			if directory == "" {
+				slog.Debug("directory command line argument not set")
+				directory = os.Getenv("GITHUB_WORKSPACE")
+				if directory == "" {
+					slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+					directory = "."
+				} else {
+					slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+				}
+			} else {
+				slog.Debug("using directory from cmd argument", "dir", directory)
+			}
+
+			if o.dryRun {
+				slog.Info("Dry-run mode enabled")
+			} else {
+				slog.Debug("Dry-run mode disabled")
+			}
+
+			var aiClient *aihelpers.AIClient
+			if !o.dryRun {
+				apiKey := os.Getenv("OPENAI_API_KEY")
+				if apiKey == "" {
+					slog.Error("API key is not set")
+					os.Exit(1)
+				}
+				aiClient = aihelpers.NewOpenAIClient(apiKey, o.model)
+			}
+
+			slog.Info("Creating PR review")
+			err := ReviewPullRequests(ctx, directory, aiClient, o)
+			if err != nil {
+				slog.Error("Error reviewing pull requests", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("finished creating PR review")
+		},
 	}
-	if o.createReadme {
-		slog.Info("Creating AI README")
-		err := CreateReadMe(ctx, directory, aiClient, o)
-		if err != nil {
-			slog.Error("Error creating readme", "err", err)
-			os.Exit(1)
-		}
-		slog.Info("finished creating readme")
-	}
-	if o.reviewPR {
-		slog.Info("Creating PR review")
-		err := ReviewPullRequests(ctx, directory, aiClient, o)
-		if err != nil {
-			slog.Error("Error reviewing pull requests", "err", err)
-			os.Exit(1)
-		}
-		slog.Info("finished creating PR review")
+}
+
+func updateKnowledgeCmd(o *Options) *cobra.Command {
+	return &cobra.Command{
+		Use:   "update-knowledge-base",
+		Short: "Update the knowledge base",
+		Run: func(cmd *cobra.Command, args []string) {
+			lvl := new(slog.LevelVar)
+			if o.debug {
+				lvl.Set(slog.LevelDebug)
+				slog.Info("Debug logging enabled")
+			} else {
+				lvl.Set(slog.LevelInfo)
+				slog.Debug("Debug logging disabled")
+			}
+			l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: lvl,
+			}))
+			slog.SetDefault(l)
+
+			ctx := context.Background()
+			ctx = setLoggerToCtx(ctx, l)
+
+			slog.Info("Command line arguments", "args", os.Args)
+			directory := cmd.Flag("dir").Value.String()
+			if directory == "" {
+				slog.Debug("directory command line argument not set")
+				directory = os.Getenv("GITHUB_WORKSPACE")
+				if directory == "" {
+					slog.Debug("GITHUB_WORKSPACE argument not set, using current directory")
+					directory = "."
+				} else {
+					slog.Debug("using directory from GITHUB_WORKSPACE", "dir", directory)
+				}
+			} else {
+				slog.Debug("using directory from cmd argument", "dir", directory)
+			}
+
+			if o.dryRun {
+				slog.Info("Dry-run mode enabled")
+			} else {
+				slog.Debug("Dry-run mode disabled")
+			}
+
+			var aiClient *aihelpers.AIClient
+			if !o.dryRun {
+				apiKey := os.Getenv("OPENAI_API_KEY")
+				if apiKey == "" {
+					slog.Error("API key is not set")
+					os.Exit(1)
+				}
+				aiClient = aihelpers.NewOpenAIClient(apiKey, o.model)
+			}
+
+			slog.Info("Updating AI knowledge base")
+			err := UpdateKnowledgeBase(ctx, directory, aiClient, o)
+			if err != nil {
+				slog.Error("Error updating knowledge base", "err", err)
+				os.Exit(1)
+			}
+			slog.Info("finished updating all knowledge base files")
+		},
 	}
 }
 

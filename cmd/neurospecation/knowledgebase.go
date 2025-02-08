@@ -16,10 +16,10 @@ import (
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
 
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient, options *Options) error {
-	// Rate limit to concurrencyRPMLimit requests per minute
-	throttle := make(chan time.Time, options.concurrencyRPMLimit)
+	// Rate limit to concurrencyRPMThrottle requests per minute
+	throttle := make(chan time.Time, options.concurrencyRPMThrottle)
 	go func() {
-		ticker := time.NewTicker(time.Minute / time.Duration(options.concurrencyRPMLimit))
+		ticker := time.NewTicker(time.Minute / time.Duration(options.concurrencyRPMThrottle))
 		defer ticker.Stop()
 		for t := range ticker.C {
 			select {
