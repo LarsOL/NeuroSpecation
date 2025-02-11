@@ -135,9 +135,9 @@ func gatherAIKnowledgeForReadMe(dir string) (string, error) {
 }
 
 func writeReadMe(dir, ans string, dryRun bool) error {
-	ymlPath := filepath.Join(dir, "ai_README.md")
+	readmePath := filepath.Join(dir, "ai_README.md")
 	if dryRun {
-		slog.Debug("skipping AI prompt, would have written file to:", "path", ymlPath)
+		slog.Debug("skipping AI prompt, would have written file to:", "path", readmePath)
 		return nil
 	}
 
@@ -145,9 +145,14 @@ func writeReadMe(dir, ans string, dryRun bool) error {
 		slog.Debug("AI did not find the directory useful", "dir", dir, "ans", ans)
 		return nil
 	}
-	ans = strings.TrimPrefix(ans, "```markdown\n")
-	ans = strings.TrimSuffix(ans, "\n```")
-	f, err := os.Create(ymlPath)
+	ans, err := extractBlock(ans, "markdown")
+	if err != nil {
+		slog.Error("expected readme file to contain a markdown block", "err", err)
+	}
+	if ans == "" {
+		return err
+	}
+	f, err := os.Create(readmePath)
 	if err != nil {
 		slog.Error("failed to create yaml file", "err", err)
 		return err

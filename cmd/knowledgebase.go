@@ -180,9 +180,13 @@ func writeKnowledgeBase(dir, ans string, dryRun bool) error {
 		slog.Error("expected a code block as answer", "dir", dir, "ans", ans)
 		return nil
 	}
-	// Extract only yaml code block
-	_, ans, _ = strings.Cut(ans, "```yaml\n")
-	ans, _, _ = strings.Cut(ans, "```")
+	ans, err := extractBlock(ans, "yaml")
+	if err != nil {
+		slog.Error("expected knowledge base file to contain a yaml block", "err", err)
+	}
+	if ans == "" {
+		return err
+	}
 	f, err := os.Create(ymlPath)
 	if err != nil {
 		slog.Error("failed to create yaml file", "err", err)
