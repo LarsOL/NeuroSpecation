@@ -1,23 +1,22 @@
-directory: aihelpers
-description: >
-  The aihelpers directory contains a single Go source file which provides functionalities
-  to interface with OpenAI APIs. This includes client initialization and prompt request handling.
-key_business_processes:
-  - Initialize an OpenAI client
-  - Set the AI model for requests
-  - Send prompt requests to OpenAI and handle responses
-module_explanation: >
-  This module acts as a helper to communicate with OpenAI's services using Go. It facilitates sending requests
-  to OpenAI's chat completion service and receiving the response, ensuring proper API key and model configurations.
-architectural_patterns:
-  - Client initialization pattern
-  - Singleton-like structure for AI client to ensure consistent configuration
-  - Error handling for network-related operations
-key_files:
-  - aihelpers.go: The main source file containing all functionalities related to OpenAI client operations.
-key_links_to_other_modules:
-  - Dependency on the OpenAI Go SDK for API client creation and chat services usage.
-  - Usage of 'github.com/openai/openai-go' package to facilitate API interactions.
+business_processes:
+  - Provides a client interface to interact with OpenAI's API for sending prompts and receiving responses.
+  - Supports customization of the AI model used for processing requests.
 
-additional_information:
-  - There is a TODO note about converting the request handling to a streaming version for better memory management.
+module_overview:
+  - The 'aihelpers' directory contains functionality for initializing and managing a client that interacts with OpenAI's services, particularly for handling text prompts and obtaining AI-generated responses.
+
+architectural_patterns:
+  - Uses an object-oriented approach with a focus on encapsulation through the AIClient structure to manage interactions with the OpenAI API.
+  - Adheres to a modular design to isolate OpenAI client operations.
+
+key_files:
+  - aihelpers.go: Contains all definitions and implementations for initializing and using the AI client, handling prompt requests, and managing configuration such as API keys and models.
+
+inter_module_relationships:
+  - Depends on the `github.com/openai/openai-go` package to interface with OpenAI's API.
+  - Utilizes the contextual capabilities of the Go `context` package for managing request lifecycles.
+
+additional_insights:
+  - A `TODO` is present to convert the current implementation to a streaming version to mitigate high memory usage when processing large payloads.
+  - Error handling is included to ensure API key and model configurations are set, and wraps errors with additional context for better traceability in failure scenarios.
+  - Future expansions could focus on optimizing performance by improving request handling, such as customizing the parameters used for OpenAI requests.
