@@ -93,7 +93,7 @@ func init() {
 }
 
 const ReviewPrompt = "You are a skilled software engineer, review the given pull request and only provide valuable feedback. Only provide feedback if it is a strong point, do not include small or obvious suggestions. Provide two sections of feedback, 1. high level architectural problems, 2. code level improvements. Ensure to also consider non-functional concerns like security, performance & maintainability (testing). You will be first given the repo context as distilled by a AI, then the PR diff."
-const PRDescriptionPrompt = "The PR author has not provided a PR description. Create a useful, concise description of the PR. This will be directly submitted as the PR description to help the code reviewers. Return as a markdown file"
+const PRDescriptionPrompt = "You are a skilled software engineer, review the given pull request and create a useful, concise description of the PR. Since the original author did not submit a PR description, your generated description will be used instead. Return as a markdown file"
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	targetBranch := viper.GetString(targetBranchKey)
@@ -159,7 +159,9 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 		var descriptionOutput string
 		_, body, err := getPRInfo(ctx)
 		if body == "" {
-			descriptionOutputOrg, err := promptAI(ctx, aiClient, prompt+"\n\n New request about previous context:\n"+PRDescriptionPrompt, viper.GetBool(dryRunKey))
+			// TODO: Hacky, split into separate, concurrent, code paths
+			p := PRDescriptionPrompt + strings.TrimPrefix(prompt, ReviewPrompt)
+			descriptionOutputOrg, err := promptAI(ctx, aiClient, p, viper.GetBool(dryRunKey))
 			if err != nil {
 				return err
 			}

@@ -77,6 +77,7 @@ func init() {
 
 const KnowledgeBasePrompt = "Create a YML file with all the key details about this software directory, this should contain a concise representation of all the information needed to: Identify & explain the key business processes, Explain the module, Explain the architectural patterns, Identify key files, Identify key links to other modules, plus anything else that would be useful for a skilled software engineer to understand the directory."
 
+// TODO: Move concurency throttle into aiClient so that it is respected globally
 func UpdateKnowledgeBase(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	// Rate limit to concurrencyRPMThrottle requests per minute
 	reqPerMin := viper.GetInt(throttleKey)
