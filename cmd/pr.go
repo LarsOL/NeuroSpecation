@@ -245,11 +245,9 @@ func writeReviewToPR(ctx context.Context, reviewOutput, descriptionOutput string
 	}
 
 	if descriptionOutput != "" {
-		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
-		if err != nil {
-			return fmt.Errorf("failed to to get PR for description, err: %w", err)
+		pr := &github.PullRequest{
+			Body: github.Ptr(descriptionOutput),
 		}
-		pr.Body = &descriptionOutput
 		_, _, err = client.PullRequests.Edit(ctx, owner, repoName, prNum, pr)
 		if err != nil {
 			return fmt.Errorf("failed to create PR description, err: %w", err)
