@@ -92,8 +92,8 @@ func init() {
 
 }
 
-const ReviewPrompt = "You are a skilled software engineer, review the given pull request and only provide valuable feedback. Only provide feedback if it is a strong point, do not include small or obvious suggestions. Provide two sections of feedback, 1. high level architectural problems, 2. code level improvements. Ensure to also consider non-functional concerns like security, performance & maintainability (testing). You will be first given the repo context as distilled by a AI, then the PR diff."
-const PRDescriptionPrompt = "You are a skilled software engineer, review the given pull request and create a useful, concise description of the PR. Since the original author did not submit a PR description, your generated description will be used instead. Return as a markdown file"
+const ReviewPrompt = "You are a senior staff engineer, review the given pull request and provide valuable, constructive feedback. Provide two sections of feedback, 1. High level architectural problems, 2. Code level improvements. Ensure to also consider non-functional concerns like security, performance & maintainability (testing) issues. You will be first given the repo context as distilled by a AI, then the PR diff."
+const PRDescriptionPrompt = "You are a senior staff engineer, review the given pull request and create a useful, concise description of the PR. Since the original author did not submit a PR description, your generated description will be used instead. Return as a markdown file"
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	targetBranch := viper.GetString(targetBranchKey)
