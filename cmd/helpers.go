@@ -54,7 +54,6 @@ func getGitRoot(dir string) (string, error) {
 }
 
 func extractBlock(content, blockType string) (string, error) {
-	// Extract only yaml code block
 	sep := "```" + blockType
 	_, c, _ := strings.Cut(content, sep+"\n")
 	c, _, _ = strings.Cut(c, "```")
