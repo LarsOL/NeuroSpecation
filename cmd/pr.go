@@ -92,7 +92,8 @@ func init() {
 
 }
 
-const ReviewPrompt = "You are a extremely skilled software engineer, review the given pull request and only provide valuable feedback. Only provide feedback if it is a strong point, do not include small or obvious suggestions. Provide two sections of feedback, 1. high level architectural problems, 2. code level improvements. Ensure to also consider non-functional concerns like security, performance & maintainability (testing). You will be first given the repo context as distilled by a AI, then the PR diff."
+const ReviewPrompt = "You are a skilled software engineer, review the given pull request and only provide valuable feedback. Only provide feedback if it is a strong point, do not include small or obvious suggestions. Provide two sections of feedback, 1. high level architectural problems, 2. code level improvements. Ensure to also consider non-functional concerns like security, performance & maintainability (testing). You will be first given the repo context as distilled by a AI, then the PR diff."
+const PRDescriptionPrompt = "The PR author has not provided a PR description. Create a useful, concise description of the PR. This will be directly submitted as the PR description to help the code reviewers. Return as a markdown file"
 
 func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIClient) error {
 	targetBranch := viper.GetString(targetBranchKey)
@@ -155,7 +156,22 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 			return err
 		}
 	} else {
-		err = writeReviewToPR(ctx, reviewOutput)
+		var descriptionOutput string
+		_, body, err := getPRInfo(ctx)
+		if body == "" {
+			descriptionOutputOrg, err := promptAI(ctx, aiClient, prompt+"\n\n New request about previous context:\n"+PRDescriptionPrompt, viper.GetBool(dryRunKey))
+			if err != nil {
+				return err
+			}
+
+			descriptionOutput = strings.TrimPrefix(descriptionOutputOrg, "```markdown\n")
+			descriptionOutput = strings.TrimSuffix(descriptionOutput, "\n```")
+			if descriptionOutput == "" {
+				slog.Error("Expected PR description output to contain a markdown file", "output", descriptionOutputOrg)
+			}
+		}
+
+		err = writeReviewToPR(ctx, reviewOutput, descriptionOutput)
 		if err != nil {
 			return err
 		}
@@ -164,7 +180,7 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 	return nil
 }
 
-func writeReviewToPR(ctx context.Context, reviewOutput string) error {
+func writeReviewToPR(ctx context.Context, reviewOutput, descriptionOutput string) error {
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
 	repo := os.Getenv("GITHUB_REPOSITORY")
@@ -226,6 +242,19 @@ func writeReviewToPR(ctx context.Context, reviewOutput string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create comment on PR, err: %w", err)
 		}
+	}
+
+	if descriptionOutput != "" {
+		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, prNum)
+		if err != nil {
+			return fmt.Errorf("failed to to get PR for description, err: %w", err)
+		}
+		pr.Body = &descriptionOutput
+		_, _, err = client.PullRequests.Edit(ctx, owner, repoName, prNum, pr)
+		if err != nil {
+			return fmt.Errorf("failed to create PR description, err: %w", err)
+		}
+
 	}
 	return nil
 }
