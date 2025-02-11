@@ -53,6 +53,20 @@ func getGitRoot(dir string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+func extractBlock(content, blockType string) (string, error) {
+	// Extract only yaml code block
+	sep := "```" + blockType
+	_, c, _ := strings.Cut(content, sep+"\n")
+	c, _, _ = strings.Cut(c, "```")
+	if c == "" {
+		return "", fmt.Errorf("could not extract block, expected block %s in content %s", sep, content)
+	}
+	if strings.Contains(c, "```") {
+		return c, fmt.Errorf("content seems to contain multiple blocks, content after  blcok extraction: %s", c)
+	}
+	return c, nil
+}
+
 const Loggerkey = "logger"
 
 func setLoggerToCtx(ctx context.Context, logger *slog.Logger) context.Context {

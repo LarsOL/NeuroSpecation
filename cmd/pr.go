@@ -166,10 +166,9 @@ func ReviewPullRequests(ctx context.Context, dir string, aiClient *aihelpers.AIC
 				return err
 			}
 
-			descriptionOutput = strings.TrimPrefix(descriptionOutputOrg, "```markdown\n")
-			descriptionOutput = strings.TrimSuffix(descriptionOutput, "\n```")
-			if descriptionOutput == "" {
-				slog.Error("Expected PR description output to contain a markdown file", "output", descriptionOutputOrg)
+			descriptionOutput, err = extractBlock(descriptionOutputOrg, "markdown")
+			if err != nil {
+				slog.Error("Expected PR description output to contain a markdown file", "err", err)
 			}
 		}
 
