@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	openai "github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 )
 
 func TestNewAIClient(t *testing.T) {
@@ -35,24 +35,24 @@ func TestAIClient_Prompt(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		//nolint:goconst
-		response := `{ 
-			"id": "chatcmpl-123", 
-			"object": "chat.completion", 
-			"created": 1677652288, 
-			"model": "gpt-3.5-turbo-0613", 
+		response := `{
+			"id": "chatcmpl-123",
+			"object": "chat.completion",
+			"created": 1677652288,
+			"model": "gpt-3.5-turbo-0613",
 			"choices": [{
-				"index": 0, 
-				"message": { 
-					"role": "assistant", 
-					"content": "Hello, how can I help you?" 
-				}, 
-				"finish_reason": "stop" 
-			}], 
-			"usage": { 
-				"prompt_tokens": 9, 
-				"completion_tokens": 12, 
-				"total_tokens": 21 
-			} 
+				"index": 0,
+				"message": {
+					"role": "assistant",
+					"content": "Hello, how can I help you?"
+				},
+				"finish_reason": "stop"
+			}],
+			"usage": {
+				"prompt_tokens": 9,
+				"completion_tokens": 12,
+				"total_tokens": 21
+			}
 		}`
 		_, err := w.Write([]byte(response))
 		if err != nil {
@@ -62,8 +62,7 @@ func TestAIClient_Prompt(t *testing.T) {
 	defer mockServer.Close()
 
 	// Create a new client with the mock server's URL
-	client := NewOpenAIClient("test_api_key", "test_model")
-	client.Client.BaseURL = mockServer.URL
+	client := NewOpenAIClient("test_api_key", "test_model", option.WithBaseURL(mockServer.URL))
 
 	// Test case 1: Successful prompt
 	req := PromptRequest{
@@ -102,14 +101,15 @@ func TestAIClient_PromptStream(t *testing.T) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		// Simulate a streaming response
 		data := []string{
-			`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}`,
-			`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}`,
-			`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":", "},"finish_reason":null}]}`,
-			`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"how can I help you?"},"finish_reason":null}]}`,
-			`{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}`,
+			`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}`,
+			`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":", "},"finish_reason":null}]}`,
+			`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"how can I help you?"},"finish_reason":null}]}`,
+			`data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`,
+			`data: [DONE]`,
 		}
 		for _, d := range data {
-			_, err := w.Write([]byte("data: " + d + "\n\n"))
+			_, err := w.Write([]byte(d + "\n\n"))
 			if err != nil {
 				return
 			}
@@ -118,8 +118,7 @@ func TestAIClient_PromptStream(t *testing.T) {
 	defer mockServer.Close()
 
 	// Create a new client with the mock server's URL
-	client := NewOpenAIClient("test_api_key", "test_model")
-	client.Client.BaseURL = mockServer.URL
+	client := NewOpenAIClient("test_api_key", "test_model", option.WithBaseURL(mockServer.URL))
 
 	// Test case: Successful streaming prompt
 	req := PromptRequest{

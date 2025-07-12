@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/openai/openai-go/option"
+	"io"
 
 	openai "github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 )
 
 type AIClient struct {
@@ -16,13 +17,12 @@ type AIClient struct {
 }
 
 // NewOpenAIClient initializes a new OpenAI client with the API key and model.
-func NewOpenAIClient(apiKey, model string) *AIClient {
+func NewOpenAIClient(apiKey, model string, opts ...option.RequestOption) *AIClient {
+	opts = append(opts, option.WithAPIKey(apiKey))
 	return &AIClient{
 		APIKey: apiKey,
 		Model:  model,
-		Client: openai.NewClient(
-			option.WithAPIKey(apiKey), // defaults to os.LookupEnv("OPENAI_API_KEY")
-		),
+		Client: openai.NewClient(opts...),
 	}
 }
 
@@ -38,8 +38,6 @@ type PromptRequest struct {
 	Temperature float64
 }
 
-// TODO: Convert to a streaming version to avoid large memory usage on large files
-// Prompt sends a prompt to OpenAI and returns the response text.
 func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, *openai.ChatCompletion, error) {
 	if client.APIKey == "" {
 		return "", nil, errors.New("API key is not set")
@@ -67,4 +65,38 @@ func (client *AIClient) Prompt(ctx context.Context, req PromptRequest) (string, 
 	}
 
 	return chatCompletion.Choices[0].Message.Content, chatCompletion, nil
+}
+
+func (client *AIClient) PromptStream(ctx context.Context, req PromptRequest) (string, error) {
+	if client.APIKey == "" {
+		return "", errors.New("API key is not set")
+	}
+
+	if client.Model == "" {
+		return "", errors.New("model is not set")
+	}
+
+	// Use req to tailor the request
+	stream := client.Client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(req.Prompt),
+		}),
+		Model: openai.F(client.Model),
+	})
+
+	var responseContent string
+	for stream.Next() {
+		chatCompletion := stream.Current()
+		responseContent += chatCompletion.Choices[0].Delta.Content
+	}
+
+	if stream.Err() != nil && !errors.Is(stream.Err(), io.EOF) {
+		return "", fmt.Errorf("error receiving stream response: %w", stream.Err())
+	}
+
+	if responseContent == "" {
+		return "", errors.New("no response content from OpenAI")
+	}
+
+	return responseContent, nil
 }

@@ -25,7 +25,7 @@ func IsCodeFile(node fs.DirEntry) bool {
 		return true
 	}
 
-	codeFileExtensions := []string{".go", ".py", ".js", ".java", ".c", ".cpp", ".cs", ".rb", ".php", ".html", ".css", ".yml"}
+	codeFileExtensions := []string{".go", ".py", ".js", ".java", ".c", ".cpp", ".cs", ".rb", ".php", ".html", ".css", ".yml", ".yaml", ".md"}
 	for _, ext := range codeFileExtensions {
 		if filepath.Ext(node.Name()) == ext {
 			return true
@@ -35,7 +35,7 @@ func IsCodeFile(node fs.DirEntry) bool {
 }
 
 func FilterNodes(node fs.DirEntry) bool {
-	skipNodes := []string{".git", ".idea", "ai_prompt.txt", "ai_knowledge.yml", "vendor", ".vscode"}
+	skipNodes := []string{".git", ".idea", "ai_knowledge_prompt.txt", "ai_knowledge.yaml", "vendor", ".vscode", "node_modules"}
 	if !IsCodeFile(node) {
 		return false
 	}
