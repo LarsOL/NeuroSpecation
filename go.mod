@@ -6,7 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/go-github/v69 v69.0.0
 	github.com/openai/openai-go v0.1.0-alpha.56
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 )
 
